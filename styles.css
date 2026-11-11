@@ -1273,3 +1273,18 @@ a.tuile:hover { border-color: var(--trait); }
 /* Assistant, GMF-U : les demi-journées de bureau, calculées à partir du total. */
 .as-calcul { margin: 0; padding: 12px 0; border-top: 1px solid var(--ligne); font-weight: 600; color: var(--encre); }
 .as-calcul.avertissement { color: var(--danger, #b3261e); }
+
+/* Ordinateur, écran large : la colonne de gauche s'élargit pour combler l'espace laissé à côté de la page
+   (jusqu'à 380 px), avec un menu plus grand et plus aéré. */
+@media (min-width: 1280px) {
+  :root { --largeur-nav: clamp(268px, calc(100vw - 1480px), 380px); }
+  .app { grid-template-columns: var(--largeur-nav) minmax(0, 1fr); }
+  /* Espacements qui suivent la hauteur de l'écran ; en bas, la place du bandeau Morand (le menu reste entier en haut de page). */
+  .nav { padding: clamp(18px, 3vh, 30px) 22px calc(clamp(14px, 2.5vh, 24px) + 46px); gap: clamp(2px, 0.9vh, 8px); }
+  .nav-marque, .nav a.nav-marque { padding-bottom: clamp(14px, 3.6vh, 34px); }
+  .nav-sceau, .nav a.nav-marque svg { width: clamp(118px, 19vh, 176px); height: clamp(118px, 19vh, 176px); }
+  .nav a { gap: 16px; padding: clamp(9px, 1.6vh, 15px) 18px; font-size: 1.16rem; border-radius: 14px; }
+  .nav a svg { width: 25px; height: 25px; }
+  .toast { left: var(--largeur-nav); }
+  .vue { column-gap: 22px; row-gap: 20px; }
+}
