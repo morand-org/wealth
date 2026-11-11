@@ -1348,18 +1348,26 @@ async function demarrageGmfu(b, base) {
   await p.click("#as-retour");
   await p.check('input[name="as-milieu"][value="gmfu"]'); await p.click("#as-suivant");
   const defauts = await p.evaluate(() => [document.getElementById("as-enseignement").value, document.getElementById("as-residents").value]);
-  await p.fill("#as-demiJournees", "8"); await p.fill("#as-patientsParDJ", "8"); await p.fill("#as-enseignement", "9");
+  // Le total au GMF-U d'abord, puis sa répartition ; le bureau en découle. Le champ des patients du SRV apparaît dès qu'on tape.
+  const vu = sel => p.evaluate(s => !!document.querySelector(s) && !!document.querySelector(s).closest(".champ, label, div").getClientRects().length && !document.querySelector(s).closest("[hidden]"), sel);
+  const srvAvant = await vu("#as-patientsSRV");
+  await p.fill("#as-srv", "1"); const srvPendant = await vu("#as-patientsSRV"); await p.fill("#as-srv", "0");
+  await p.fill("#as-totalGmfu", "8"); await p.fill("#as-patientsParDJ", "8"); await p.fill("#as-enseignement", "9");
   await p.click("#as-suivant"); await p.waitForTimeout(150);
   const refus = await p.textContent("#as-message");
-  await p.fill("#as-enseignement", "3"); await p.fill("#as-residents", "2"); await p.fill("#as-inscrits", "900");
+  await p.fill("#as-totalGmfu", "10"); await p.fill("#as-enseignement", "3"); await p.fill("#as-admin", "2");
+  const calcul = await p.textContent(".as-calcul");
+  await p.fill("#as-residents", "2"); await p.fill("#as-inscrits", "900");
   const deborde = await p.evaluate(() => document.querySelector("#assistant").scrollWidth > document.querySelector("#assistant").clientWidth + 1);
   await p.click("#as-suivant"); await p.waitForTimeout(400);
   const fin = await p.evaluate(() => ({ r: window.Wealthnord.etat().revenu, toast: document.getElementById("toast-texte").textContent }));
   verifier("GMF-U : l'accueil annonce deux questions, comme l'écran", intro.includes("deux questions"), intro);
   verifier("GMF-U : hors GMF-U, ni enseignement ni résidents", horsGmfu);
   verifier("GMF-U : 2 demi-journées d'enseignement et 1 résident proposés, visibles", defauts.join() === "2,1", defauts);
-  verifier("GMF-U : plus d'enseignement que de demi-journées est refusé", refus.includes("enseignement"), refus);
-  verifier("GMF-U : les réponses se retrouvent exactement dans l'état", fin.r.demiJournees === 8 && fin.r.patientsParDJ === 8 && fin.r.enseignement === 3
+  verifier("GMF-U : une répartition plus grande que le total est refusée", refus.includes("enseignement") && refus.includes("dépassent"), refus);
+  verifier("GMF-U : le champ des patients du SRV apparaît dès qu'on inscrit des demi-journées de SRV", !srvAvant && srvPendant, { srvAvant, srvPendant });
+  verifier("GMF-U : 10 au total, 3 d'enseignement et 2 administratives laissent 5 demi-journées de bureau", calcul.replace(/\s/g, " ").includes("bureau, avec vos propres patients : 5"), calcul);
+  verifier("GMF-U : les réponses se retrouvent exactement dans l'état", fin.r.demiJournees === 8 && fin.r.patientsParDJ === 8 && fin.r.enseignement === 3 && fin.r.demiJourneesAdmin === 2
     && fin.r.residents === 2 && fin.r.inscritsDebut === 900 && fin.r.membreGmf === true, { dj: fin.r.demiJournees, ens: fin.r.enseignement, res: fin.r.residents, ins: fin.r.inscritsDebut, gmf: fin.r.membreGmf });
   verifier("GMF-U : le message final décrit ce qui est calculé", fin.toast.includes("5 demi-journées de clinique à 8 patients, 3 d'enseignement (2 résidents)"), fin.toast);
   verifier("GMF-U : rien ne déborde à 320 px", !deborde);

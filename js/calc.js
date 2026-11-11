@@ -390,9 +390,15 @@
     // d'abord le plafond ; la garde sur place faite en plus de ces heures le complète, puis celle faite en excédent
     // est payée à 94 %, au plus 528 h (par. 5.03 et 5.05) ; les autres heures au-delà, à 71,8 % (par. 5.04).
     const heures = W * (N + SRV) * H, plafondHeures = Math.max(0, m("heuresMax100"));
-    const garde = Math.max(0, +r.heuresGardeSurPlace || 0), heuresHoraire = heures + garde;
+    /* GMF-U : demi-journées administratives (gestion du GMF-U, comités, tâches médico-administratives), payées à
+       l'heure au plein taux horaire dans les trois modes, majoration du territoire comprise ; elles comptent dans le
+       plafond annuel d'heures (au-delà, 71,8 %). Rangées avec les heures : « Heures ou forfait horaire ». */
+    const ADM = r.milieu === undefined || r.milieu === "gmfu" ? Math.max(0, +r.demiJourneesAdmin || 0) : 0, heuresAdmin = W * ADM * H;
+    const adminAuDela = Math.max(0, heuresAdmin - plafondHeures);
+    const administratif = (heuresAdmin - adminAuDela * (1 - PCT_AU_DELA / 100)) * m("tarifHoraire") * maj;
+    const garde = Math.max(0, +r.heuresGardeSurPlace || 0), heuresHoraire = heures + heuresAdmin + garde;
     const heuresAuDela = Math.max(0, heuresHoraire - plafondHeures);
-    const gardeExcedent = Math.max(0, garde - Math.max(0, plafondHeures - heures));
+    const gardeExcedent = Math.max(0, garde - Math.max(0, plafondHeures - heures - heuresAdmin));
     const gardeAuDela = Math.min(GARDE_MAX_94, gardeExcedent), autresAuDela = heuresAuDela - gardeAuDela;
     const perteHeures = (gardeAuDela * (1 - PCT_GARDE / 100) + autresAuDela * (1 - PCT_AU_DELA / 100)) * m("tarifHoraire") * maj;
     // En plus des heures : forfait de responsabilité à chaque examen d'un patient vulnérable inscrit (visites de
@@ -413,7 +419,7 @@
     // Mixte : forfait horaire, part du tarif des visites et, en GMF-U, l'intervention de supervision
     // pour la demi-journée d'enseignement, ou les visites des apprenants.
     const mixte = {
-      forfaitHoraire: heures * m("forfaitHoraireMixte") * maj,
+      forfaitHoraire: heures * m("forfaitHoraireMixte") * maj + administratif,
       visites: (visitesMixte + visitesSrv + (visitesApprenants ? visitesAppr + visitesPendant : 0)) * maj * m("pctMixte") / 100,
       // Avec l'intervention : l'acte, plus, à 100 %, les suppléments de l'annexe II à l'annexe XXIII permis durant la période
       // visée (Brochure no 1, version en vigueur au 5 novembre 2026) : forfait de responsabilité des patients vulnérables
@@ -432,7 +438,8 @@
     // (l'intervention de supervision n'existe qu'au mixte), sans forfait horaire.
     const pctActe = r.pctActe ?? 100;
     const acte = { visites: (visitesMixte + visitesSrv + visitesAppr + visitesPendant) * maj * pctActe / 100, ...base };
-    acte.total = acte.visites + commun;
+    if (administratif > 0) acte.heures = administratif;
+    acte.total = acte.visites + administratif + commun;
     // Frais de cabinet (loyer, personnel, équipement) remis à la clinique : un pourcentage
     // de la facturation RAMQ de la clinique (sans la compensation des frais de cabinet, les
     // activités en établissement ni les autres revenus) et un montant fixe. À l'acte seulement,
@@ -488,7 +495,7 @@
     const tarifMoyenRdv = tarifVisite(r.mix, palierFin, TF) * maj, tarifMoyenSrv = tarifSrv(palierFin) * maj;
     // Hausse du tarif moyen d'une visite au palier de 500 inscrits.
     const t0 = tarifVisite(r.mix, 0, TF), gainPalier = t0 > 0 ? tarifVisite(r.mix, 1, TF) / t0 - 1 : 0;
-    return { heures, garde, heuresHoraire, heuresAuDela, gardeAuDela, autresAuDela, plafondHeures, perteHeures, nbVisites, nbPriseEnCharge, inscritsDepart, inscritsFin, vulnerablesFin, semainesPalierHaut, gainPalier,
+    return { heures, heuresAdmin, administratif, garde, heuresHoraire, heuresAuDela, gardeAuDela, autresAuDela, plafondHeures, perteHeures, nbVisites, nbPriseEnCharge, inscritsDepart, inscritsFin, vulnerablesFin, semainesPalierHaut, gainPalier,
       patientsVus, forfaitGmfPossible, detailCompensation, activites, detailActivites, basePolyvalence, polyvalence, pctPolyvalence, anneePratique, detailVolume, examens,
       visitesApprenants: W * T * apprenants, heuresSupervision: heuresSup, tarifMoyenRdv, tarifMoyenSrv,
       // Pour le mode composé (Loi 2) : majoration du territoire, sans-rendez-vous (nombre et valeur à 100 %) et
@@ -566,14 +573,14 @@
     const srvOrphelins = n0(g.nbSrv) * partOrph, orphelins = n0(g.valeurSrv) * partOrph;
     const enseignement = n0(g.supervisionCent), visitesApprenants = n0(g.visitesApprenants);
     const visites = Math.max(0, n0(g.nbVisites) - srvOrphelins - visitesApprenants), actes = visites * n0(p.tarifVisite);
-    const indirectes = n0(p.heuresIndirectes) * n0(o.semaines), heures = n0(g.heures) + indirectes, horaire = heures * n0(p.tauxHoraire);
+    const indirectes = n0(p.heuresIndirectes) * n0(o.semaines), heures = n0(g.heures) + n0(g.heuresAdmin) + indirectes, horaire = heures * n0(p.tauxHoraire);
     const a = g.acte || {}, inchanges = n0(a.activites) + n0(a.compensation) + n0(a.autres) + n0(a.perDiem) + n0(a.polyvalence);
     const restent = inchanges + orphelins + enseignement;
     const sansMaj = capitation + actes + horaire, premiereLigne = sansMaj * maj, total = premiereLigne + restent;
     // Parts de l'entente (50-30-20) : sans la majoration des nouveaux médecins, qui s'y ajoute.
     const base = sansMaj - majoration, part = x => base > 0 ? x / base : 0;
     return { associes, vulnerables, affilies, anneePEC: an, majores, majoration: majoration * maj, maj, visites, srvOrphelins, orphelins, visitesApprenants, enseignement,
-      heuresClinique: n0(g.heures), indirectes, heures, capitation: capitation * maj, actes: actes * maj, horaire: horaire * maj, inchanges, restent,
+      heuresClinique: n0(g.heures), heuresAdmin: n0(g.heuresAdmin), indirectes, heures, capitation: capitation * maj, actes: actes * maj, horaire: horaire * maj, inchanges, restent,
       premiereLigne, total, parts: { capitation: part(capitation - majoration), actes: part(actes), horaire: part(horaire) } };
   }
   /* Hypothèses de départ : celles qui redonnent un revenu cible (par exemple le brut du mode actuel), réparti selon les

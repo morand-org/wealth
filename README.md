@@ -60,6 +60,11 @@ chacune, alignées et de même hauteur sur ordinateur.
   lien vers chaque onglet : Modes (« Rythme » en clinique, à l'acte
   seulement), Demi-journée, Actes et Offres. Toujours la pratique, même en
   vue résidence : la comparaison sert à la choisir.
+- **Premier lancement en GMF-U** : le total des demi-journées au GMF-U, puis
+  sa répartition (sans rendez-vous, enseignement, administratif) ; les
+  demi-journées de bureau en découlent. Les demi-journées administratives
+  sont payées à l'heure, au plein taux horaire, dans les trois modes
+  (majoration du territoire comprise, plafond annuel d'heures).
 - **Codes** : le répertoire des actes, avec recherche par code ou par mot,
   et les formulaires de la CNESST.
 - **Loi 2** : l'estimateur du mode composé, ce qui change (les règles

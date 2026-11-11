@@ -50,7 +50,7 @@ window.Verrou.quandOuvert(function () {
     if (!d || typeof d !== "object") return d;
     if (d.revenu) {
       if (!["clinique", "gmfu", "clsc"].includes(d.revenu.milieu)) d.revenu.milieu = d.revenu.milieu ? "clinique" : "gmfu";
-      d.revenu.demiJourneesSRV ??= 0; d.revenu.patientsSRV ??= 0; d.revenu.activites ??= [];
+      d.revenu.demiJourneesSRV ??= 0; d.revenu.patientsSRV ??= 0; d.revenu.demiJourneesAdmin ??= 0; d.revenu.activites ??= [];
       if (!d.revenu.lignes && d.revenu.autresRevenus > 0) d.revenu.lignes = [{ k: "ramq", montant: d.revenu.autresRevenus, periode: "an" }];
       if (d.revenu.lignes) d.revenu.autresRevenus = 0;
       // Sans rendez-vous : plus de supplément par demi-journée.
@@ -139,7 +139,7 @@ window.Verrou.quandOuvert(function () {
   /* Bornes plausibles des champs numériques : par chemin, sinon par unité. Une valeur plus grande est ramenée à la
      borne (saisie et sauvegardes importées). */
   const BORNES = {
-    "revenu.semaines": 52, "revenu.semainesArrivee": 52, "revenu.demiJournees": 14, "revenu.demiJourneesSRV": 14, "revenu.enseignement": 14,
+    "revenu.semaines": 52, "revenu.semainesArrivee": 52, "revenu.demiJournees": 14, "revenu.demiJourneesSRV": 14, "revenu.demiJourneesAdmin": 14, "revenu.enseignement": 14,
     "revenu.enseignementApresMidi": 14, "revenu.heuresParDJ": 12, "revenu.patientsParDJ": 60, "revenu.patientsSRV": 60, "revenu.residents": 6, "revenu.externes": 6,
     "revenu.patientsParResident": 20, "revenu.patientsParExterne": 20, "revenu.patientsPendantSupervision": 30, "revenu.inscritsDebut": 5000,
     "revenu.nouveauxGuichet": 3000, "revenu.nouveauxSansMedecin": 3000, "revenu.nouveauxTransferes": 3000, "revenu.nouveauxAnGuichet": 3000,
@@ -1370,7 +1370,7 @@ window.Verrou.quandOuvert(function () {
     }
     const g = R.rev, x = g[R.mode];
     tuilesResume("rv-r-tuiles", [{ titre: "Net de la pratique", valeur: $(R.nets[R.mode] / 12), sous: R.fraisPerso(R.mode) > 0 ? "Par mois, après impôt et frais" : "Par mois, après impôt" },
-      { titre: "Heures en clinique", valeur: nb(g.heures, 0) + " h", sous: "Par année" }, { titre: "Visites", valeur: nb(g.nbVisites, 0), sous: "Par année, en clinique" },
+      { titre: "Heures en clinique", valeur: nb(g.heures, 0) + " h", sous: g.heuresAdmin > 0 ? `Par année, plus ${nb(g.heuresAdmin, 0)} h administratives` : "Par année" }, { titre: "Visites", valeur: nb(g.nbVisites, 0), sous: "Par année, en clinique" },
       { titre: "Patients inscrits", valeur: nb(g.inscritsFin, 0), sous: "En fin d'année" }]);
     const l = PARTS_REVENU.map(([n, f]) => [n, f(x)]).filter(([, v]) => v > 0.5).sort((a, b) => b[1] - a[1]);
     const autres = l.slice(4).reduce((t, [, v]) => t + v, 0);
@@ -4944,7 +4944,7 @@ window.Verrou.quandOuvert(function () {
   const TYPES_ASSISTANT = ["urgence", "hospitalisation", "obstetrique", "palliatifs", "chsld", "garde"].filter(k => ACTIVITES[k]);
   let A = null, etape = 0;
   const reponsesVides = () => ({ famille: null, depuis12mois: true, enfantCommun: false, partenaire: "salarie", revenuPartenaire: 0,
-    enfants: [], milieu: null, mode: "horaire", demiJournees: 8, srv: 0, premiere: true, incorporee: false,
+    enfants: [], milieu: null, mode: "horaire", demiJournees: 8, totalGmfu: 8, admin: 0, srv: 0, premiere: true, incorporee: false,
     patientsParDJ: null, patientsSRV: null, heuresParDJ: 4, vacances: 6, enseignement: 2, residents: 1, inscrits: 0, nouveaux: 0, vulnerables: 0, membreGmf: null, fraisPct: 0,
     statut: "pratique", niveau: "1", debutPratique: (() => { const d = new Date(); return `${d.getMonth() >= 6 ? d.getFullYear() + 1 : d.getFullYear()}-07`; })(),
     ...Object.fromEntries(TYPES_ASSISTANT.flatMap(k => [["act_" + k, false], ["actN_" + k, 4]])),
@@ -4967,6 +4967,8 @@ window.Verrou.quandOuvert(function () {
     }
     return f;
   }
+  // GMF-U : demi-journées de bureau = total, moins le SRV, l'enseignement et l'administratif.
+  const bureauGmfu = () => (+A.totalGmfu || 0) - (+A.srv || 0) - (+A.enseignement || 0) - (+A.admin || 0);
   const asGroupe = (...champs) => { const g = el("div", "as-groupe"); champs.filter(Boolean).forEach(x => g.appendChild(x)); return g; };
   const asNombre = (l, cle, u, s, h, vide = false) => creerChamp({ l, u, s, h }, "as-" + cle, inp => {
     inp.value = A[cle] ? affNombre(A[cle]) : vide && A[cle] === 0 ? "0" : ""; inp.placeholder = vide ? "" : "0";
@@ -5029,22 +5031,48 @@ window.Verrou.quandOuvert(function () {
         ["mixte", "Mixte", "Un forfait par heure, plus une part du tarif des visites"],
         ["acte", "À l'acte", "Chaque visite payée selon son tarif"]]));
     } },
-    { titre: "Votre semaine", valide: () => A.demiJournees > 0 && !(A.patientsParDJ > 0) ? "Inscrivez le nombre de patients que vous voyez par demi-journée de rendez-vous."
-      : A.srv > 0 && !(A.patientsSRV > 0) ? "Inscrivez le nombre de patients par demi-journée de sans rendez-vous."
-      : A.milieu === "gmfu" && (+A.enseignement || 0) > (+A.demiJournees || 0) ? "Les demi-journées d'enseignement font partie de vos demi-journées de rendez-vous : il n'y en a pas plus." : "", rendre: c => {
+    /* Votre semaine. En GMF-U : le total des demi-journées au GMF-U d'abord, puis sa répartition (sans rendez-vous,
+       enseignement, administratif) ; les demi-journées de bureau en découlent. Les champs qui dépendent d'une réponse
+       (patients du SRV, résidents) apparaissent dès qu'on la tape. */
+    { titre: "Votre semaine", valide: () => {
+      const gmfu = A.milieu === "gmfu";
+      if (gmfu) {
+        const bureau = bureauGmfu();
+        if (!(+A.totalGmfu > 0)) return "Inscrivez le nombre de demi-journées que vous faites au GMF-U chaque semaine.";
+        if (bureau < 0) return "Les sans rendez-vous, l'enseignement et l'administratif dépassent votre total de demi-journées au GMF-U.";
+        A.demiJournees = bureau + (+A.enseignement || 0);
+        if (bureau > 0 && !(A.patientsParDJ > 0)) return "Inscrivez le nombre de patients que vous voyez par demi-journée de bureau.";
+      } else if (A.demiJournees > 0 && !(A.patientsParDJ > 0)) return "Inscrivez le nombre de patients que vous voyez par demi-journée de rendez-vous.";
+      return A.srv > 0 && !(A.patientsSRV > 0) ? "Inscrivez le nombre de patients par demi-journée de sans rendez-vous." : "";
+    }, rendre: c => {
       const residence = A.statut === "residence", heures = A.milieu && MILIEUX[A.milieu].modes.length > 1, gmfu = A.milieu === "gmfu";
       if (residence) c.appendChild(el("p", "as-intro", "Votre pratique à venir, telle que vous la prévoyez."));
-      c.appendChild(asGroupe(asNombre("Demi-journées de rendez-vous par semaine", "demiJournees", "d.-j.", 1),
-        asNombre("Patients par demi-journée de rendez-vous", "patientsParDJ", "pat.", 0.5, "Vos propres patients, en moyenne.", true),
-        gmfu && asNombre("Dont demi-journées d'enseignement", "enseignement", "d.-j.", 1, "Celles où vous supervisez des résidents ; 0 si vous n'enseignez pas.", true),
-        gmfu && A.enseignement > 0 && asNombre("Résidents supervisés en même temps", "residents", "rés.", 1, "Pendant une demi-journée d'enseignement, en moyenne.", true),
+      // Champs qui dépendent d'une autre réponse : montrés ou cachés à chaque saisie, sans redessiner l'étape.
+      const conds = [], si = (pred, champ) => { conds.push([champ, pred]); return champ; };
+      const bureau = gmfu ? el("p", "as-calcul") : null;
+      if (bureau) bureau.setAttribute("aria-live", "polite");
+      c.appendChild(asGroupe(
+        gmfu && asNombre("Demi-journées au GMF-U par semaine", "totalGmfu", "d.-j.", 1, "Toutes : bureau, sans rendez-vous, enseignement et administratif."),
+        gmfu && asNombre("Dont sans rendez-vous (SRV)", "srv", "d.-j.", 1, null, true),
+        gmfu && asNombre("Dont enseignement", "enseignement", "d.-j.", 1, "Celles où vous supervisez des résidents.", true),
+        gmfu && asNombre("Dont administratives", "admin", "d.-j.", 1, "Gestion du GMF-U, comités, tâches administratives : payées au taux horaire, quel que soit votre mode.", true),
+        bureau,
+        !gmfu && asNombre("Demi-journées de rendez-vous par semaine", "demiJournees", "d.-j.", 1),
+        si(() => !gmfu || bureauGmfu() > 0, asNombre(gmfu ? "Patients par demi-journée de bureau" : "Patients par demi-journée de rendez-vous", "patientsParDJ", "pat.", 0.5, "Vos propres patients, en moyenne.", true)),
+        !gmfu && asNombre("Demi-journées de sans rendez-vous (SRV)", "srv", "d.-j.", 1, null),
+        si(() => A.srv > 0, asNombre("Patients par demi-journée de SRV", "patientsSRV", "pat.", 0.5, null, true)),
+        gmfu && si(() => A.enseignement > 0, asNombre("Résidents supervisés en même temps", "residents", "rés.", 1, "Pendant une demi-journée d'enseignement, en moyenne.", true)),
         A.rapide && asNombre("Patients inscrits, environ", "inscrits", "pat.", 50, "Facultatif : les forfaits annuels en dépendent (forfait GMF, patients vulnérables)."),
-        asNombre("Demi-journées de sans rendez-vous (SRV)", "srv", "d.-j.", 1, null),
-        A.srv > 0 && asNombre("Patients par demi-journée de SRV", "patientsSRV", "pat.", 0.5, null, true),
         heures && asNombre("Heures par demi-journée", "heuresParDJ", "h", 0.25, "Pour le taux horaire et le forfait horaire du mixte."),
         asNombre("Semaines de vacances par année", "vacances", "sem.", 1, "Vos semaines en clinique : 52 moins ces vacances. Si vous faites des semaines à l'hôpital, retirez-les ensuite des semaines en clinique (Revenu, Modifier)."),
         !residence && asCase("C'est ma première année de pratique", "premiere", "La clientèle se bâtit, et aucun acompte d'impôt n'est exigé la première année."),
         asCase("Ma pratique est incorporée", "incorporee", "Les paiements de la RAMQ sont versés à votre société.")));
+      const maj = () => {
+        conds.forEach(([champ, pred]) => { if (champ) champ.hidden = !pred(); });
+        if (bureau) { const b = bureauGmfu(); bureau.textContent = b < 0 ? "La répartition dépasse votre total de demi-journées au GMF-U."
+          : `Demi-journées de bureau, avec vos propres patients : ${nb(b, 1)}`; bureau.classList.toggle("avertissement", b < 0); }
+      };
+      c.addEventListener("input", maj); maj();
     } },
     { titre: "Votre clientèle", rendre: c => {
       const nouvelle = A.premiere || A.statut === "residence", clinique = A.milieu === "clinique";
@@ -5150,7 +5178,8 @@ window.Verrou.quandOuvert(function () {
   function resumeSemaine(A) {
     const dj = Math.max(0, +A.demiJournees || 0), ens = A.milieu === "gmfu" ? Math.min(dj, Math.max(0, +A.enseignement || 0)) : 0, res = Math.max(0, +A.residents || 0);
     const clinique = `${nb(dj - ens)} demi-journée${dj - ens > 1 ? "s" : ""} de clinique à ${nb(A.patientsParDJ || 0)} patients`;
-    return ens > 0 ? `${clinique}, ${nb(ens)} d'enseignement (${nb(res)} résident${res > 1 ? "s" : ""})` : clinique;
+    const adm = A.milieu === "gmfu" ? Math.max(0, +A.admin || 0) : 0, admTexte = adm > 0 ? `, ${nb(adm)} administrative${adm > 1 ? "s" : ""}` : "";
+    return (ens > 0 ? `${clinique}, ${nb(ens)} d'enseignement (${nb(res)} résident${res > 1 ? "s" : ""})` : clinique) + admTexte;
   }
   // Semaines en clinique : 52 moins les vacances.
   const semainesClinique = A => Math.max(0, Math.min(52, 52 - Math.max(0, +A.vacances || 0)));
@@ -5173,6 +5202,7 @@ window.Verrou.quandOuvert(function () {
       anneePremiere: residence ? +String(A.debutPratique || "").slice(0, 4) || 0 : A.premiere ? auj.getFullYear() : 0, modeBudget: MILIEUX[A.milieu].modes.includes(A.mode) ? A.mode : MILIEUX[A.milieu].modes[0],
       demiJournees: dj, enseignement: gmfu ? Math.min(dj, Math.max(0, Math.round(+A.enseignement || 0))) : 0,
       residents: gmfu && A.enseignement > 0 ? Math.min(6, Math.max(0, Math.round(+A.residents || 0))) : 0, demiJourneesSRV: A.srv || 0, patientsSRV: A.srv ? A.patientsSRV || 0 : 0,
+      demiJourneesAdmin: gmfu ? Math.min(14, Math.max(0, +A.admin || 0)) : 0,
       patientsParDJ: A.patientsParDJ || 0, heuresParDJ: A.heuresParDJ || 4, semaines: semainesClinique(A), semainesArrivee: semainesClinique(A), autresRevenus: 0,
       inscritsDebut: Math.max(0, A.inscrits || 0), nouveauxGuichet: A.premiere || residence ? Math.max(0, A.nouveaux || 0) : 0, nouveauxSansMedecin: 0, nouveauxTransferes: 0,
       nouveauxAnGuichet: 0, nouveauxAnSansMedecin: 0, partVulnerable: Math.min(100, Math.max(0, A.vulnerables || 0)), partTresVulnerable: 0, partGroupe2: 0, partGroupe34: 0,

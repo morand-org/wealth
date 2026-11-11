@@ -23,7 +23,7 @@
       milieu: "clinique", annee: "premiere", anneePremiere: 0, modeBudget: "acte",
       // 38 semaines en clinique : 52, moins 6 de vacances et environ 8 à l'hôpital.
       demiJournees: 7, enseignement: 0, heuresParDJ: 4, semaines: 38, patientsParDJ: 6,
-      demiJourneesSRV: 1, patientsSRV: 12,
+      demiJourneesSRV: 1, patientsSRV: 12, demiJourneesAdmin: 0,
       residents: 0, patientsPendantSupervision: 0, autresRevenus: 0,
       inscritsDebut: 0, nouveauxGuichet: 500, nouveauxSansMedecin: 0, nouveauxTransferes: 0,
       nouveauxAnGuichet: 0, nouveauxAnSansMedecin: 0,   // année type : nouveaux patients par année, à la place des départs
@@ -346,6 +346,8 @@
       { p: "revenu.patientsSRV", l: "Patients par demi-journée de SRV", u: "pat.", s: 0.5, si: "revenu.demiJourneesSRV" },
       { p: "revenu.srvMemeJour", l: "Le SRV tombe le même jour qu'une demi-journée de rendez-vous", t: "check", si: "revenu.demiJourneesSRV&revenu.milieu=clinique&details",
         h: "Compensation des frais de cabinet : au plus 64,80 $ par jour civil, rendez-vous et sans rendez-vous confondus (EP 40, par. 14.01)." },
+      { p: "revenu.demiJourneesAdmin", l: "Demi-journées administratives par semaine", u: "d.-j.", si: SI_GMFU,
+        h: "Gestion du GMF-U, comités, tâches médico-administratives : payées à l'heure, au plein taux horaire, quel que soit votre mode." },
       { p: "revenu.heuresParDJ", l: "Heures par demi-journée", u: "h", s: 0.25, si: "details" },
       { g: "Enseignement et apprenants", si: SI_GMFU },
       { p: "revenu.enseignement", l: "Demi-journées d'enseignement par semaine", u: "d.-j." },

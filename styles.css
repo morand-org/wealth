@@ -691,7 +691,7 @@ a.tuile:hover { border-color: var(--trait); }
   .nav a:hover { background: var(--surface-2); }
   .nav a[aria-current="page"] { background: var(--surface); color: var(--encre); font-weight: 600; box-shadow: var(--ombre); }
   .nav-donnees { display: flex !important; margin-top: auto; }
-  main { width: 100%; max-width: 760px; padding: 36px 32px 64px; }   /* toute la largeur offerte : chaque page, la même colonne */
+  main { width: 100%; max-width: 880px; padding: 36px 40px 64px; }   /* toute la largeur offerte : chaque page, la même colonne */
   .vue { gap: 16px; }
   .tete-page h1 { font-size: 2.6rem; }
   .carte { padding: 22px 24px; }
@@ -829,6 +829,25 @@ a.tuile:hover { border-color: var(--trait); }
 @media (min-width: 1100px) {
   main { max-width: 1000px; }
   .tuiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* Ordinateur, écran large : la page prend la place offerte (jusqu'à 1 400 px) et le texte grandit un peu ;
+   les tuiles reviennent sur une rangée de quatre. Moins d'espace mort, des caractères plus lisibles. */
+@media (min-width: 1280px) {
+  html { font-size: 17px; }
+  body { font-size: 16.5px; }
+  main { max-width: 1400px; padding: 44px 56px 72px; }
+  .vue { column-gap: 22px; row-gap: 20px; }
+  .tuiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .tuiles.demi { grid-template-columns: repeat(2, minmax(0, 1fr)); }   /* dans une demi-colonne : deux par rangée */
+  .carte { padding: 26px 28px; }
+  .carte-tete h2, .carte-repliable > summary h2 { font-size: 1.18rem; }
+  .tete-page h1 { font-size: 2.9rem; }
+  .hero-valeur { font-size: 4rem; }
+  .hero-etiquette, .hero-sous { font-size: 1rem; }
+  .nav a { font-size: 1rem; }
+  .carte p, .carte .aide, .a-faire li { max-width: 48em; }
+}
+@media (min-width: 1100px) {
   .vue { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
   .vue > * { grid-column: 1 / -1; }
   .vue > .demi { grid-column: auto; }
@@ -1251,3 +1270,6 @@ a.tuile:hover { border-color: var(--trait); }
 @media screen and (min-width: 960px) { .vue { gap: 28px; } .carte { padding: 22px; } }
 /* Téléphone étroit : la légende sur une colonne, sans chevauchement des libellés et des montants. */
 @media (max-width: 359px) { .legende-cases { grid-template-columns: minmax(0, 1fr); } }
+/* Assistant, GMF-U : les demi-journées de bureau, calculées à partir du total. */
+.as-calcul { margin: 0; padding: 12px 0; border-top: 1px solid var(--ligne); font-weight: 600; color: var(--encre); }
+.as-calcul.avertissement { color: var(--danger, #b3261e); }
