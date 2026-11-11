@@ -1,11 +1,11 @@
 /* WealthMorand : fonctionne hors ligne. Réseau d'abord, pour recevoir les mises
    à jour ; copie en cache en secours. Les données personnelles ne passent
    jamais ici : elles restent dans le stockage local du navigateur. */
-const CACHE = "wealthmorand-v113";
+const CACHE = "wealthmorand-v114";
 const FICHIERS = [
   "./", "index.html", "styles.css", "js/demarrage.js", "js/calc.js", "js/repertoire.js", "js/verrou.js", "js/catalogues.js", "js/interface.js", "js/app.js", "js/rapport.js", "manifest.webmanifest",
   "polices/inter.woff2", "polices/newsreader.woff2",
-  "icone.svg", "icones/icone-192.png", "icones/icone-512.png", "icones/apple-touch-icon.png", "icones/favicon-32.png",
+  "icone.svg", "icones/icone-192.png", "icones/icone-512.png", "icones/apple-touch-icon.png", "icones/favicon-32.png", "icones/favicon.svg",
 ];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FICHIERS)).then(() => self.skipWaiting()));
