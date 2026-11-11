@@ -610,17 +610,18 @@ verifier("transition incorporée : une seule déclaration paie davantage, et gar
   && proche(uneDec.societe.dividendes, 127200, 0.01) && proche(uneDec.totalGlobal, uneDec.total + uneDec.societe.impotSociete, 1e-6) && uneDec.rrq > 0,
   { fed: uneDec.fed, qc: uneDec.qc });
 
-/* GMF-U : demi-journées administratives, payées à l'heure au plein taux horaire dans les trois modes (majoration du
-   territoire comprise) ; elles comptent dans le plafond annuel d'heures. */
+/* GMF-U : demi-journées administratives (Brochure no 1) : au taux horaire, des heures comme les autres (codes d'activité
+   051028, 051043) ; au mixte, le forfait horaire seulement (annexe XXIII, par. 2.05) ; à l'acte, rien. */
 {
-  const base = { ...rev, milieu: "gmfu", demiJourneesAdmin: 0 }, g0 = C.revenuGmfu(base), g1 = C.revenuGmfu({ ...base, demiJourneesAdmin: 1 });
-  const attendu = (+base.semaines) * 1 * (+base.heuresParDJ) * C.RAMQ.tarifHoraire * (1 + (+base.majorationPct || 0) / 100);
-  verifier("GMF-U : une demi-journée administrative par semaine rapporte ses heures au taux horaire, dans les trois modes",
-    proche(g1.heuresAdmin, base.semaines * base.heuresParDJ, 1e-9) && proche(g1.administratif, attendu, 0.01)
-    && ["acte", "mixte"].every(m => proche(g1[m].total - g0[m].total, attendu, 0.01))
-    && g1.horaire.total - g0.horaire.total > 0 && g1.heures === g0.heures, { admin: g1.administratif, attendu });
+  const base = { ...rev, milieu: "gmfu", demiJourneesAdmin: 0, majorationPct: 0 }, g0 = C.revenuGmfu(base), g1 = C.revenuGmfu({ ...base, demiJourneesAdmin: 1 });
+  const heuresAdm = base.semaines * base.heuresParDJ;
+  verifier("GMF-U : demi-journée administrative au mixte, le forfait horaire (59,68 $/h) seulement",
+    proche(g1.heuresAdmin, heuresAdm, 1e-9) && proche(g1.mixte.total - g0.mixte.total, heuresAdm * C.RAMQ.forfaitHoraireMixte, 0.01), { admin: g1.mixte.total - g0.mixte.total });
+  verifier("GMF-U : demi-journée administrative à l'acte, aucun tarif : rien n'est compté", proche(g1.acte.total, g0.acte.total, 1e-9));
+  verifier("GMF-U : demi-journée administrative au taux horaire, des heures comme les autres (dans le plafond annuel)",
+    proche(g1.heuresHoraire - g0.heuresHoraire, heuresAdm, 1e-9) && g1.horaire.total > g0.horaire.total);
   const hors = C.revenuGmfu({ ...base, milieu: "clinique", demiJourneesAdmin: 1 });
-  verifier("GMF-U : hors GMF-U, les demi-journées administratives ne comptent pas", hors.administratif === 0 && hors.heuresAdmin === 0);
+  verifier("GMF-U : hors GMF-U, les demi-journées administratives ne comptent pas", hors.heuresAdmin === 0 && hors.administratifMixte === 0);
 }
 
 /* Mode composé (Loi 2) : aucun montant officiel tant que rien n'est publié ; le calcul suit les hypothèses ; calibré sur un

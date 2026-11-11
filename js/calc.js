@@ -390,12 +390,16 @@
     // d'abord le plafond ; la garde sur place faite en plus de ces heures le complète, puis celle faite en excédent
     // est payée à 94 %, au plus 528 h (par. 5.03 et 5.05) ; les autres heures au-delà, à 71,8 % (par. 5.04).
     const heures = W * (N + SRV) * H, plafondHeures = Math.max(0, m("heuresMax100"));
-    /* GMF-U : demi-journées administratives (gestion du GMF-U, comités, tâches médico-administratives), payées à
-       l'heure au plein taux horaire dans les trois modes, majoration du territoire comprise ; elles comptent dans le
-       plafond annuel d'heures (au-delà, 71,8 %). Rangées avec les heures : « Heures ou forfait horaire ». */
+    /* GMF-U : demi-journées administratives (Brochure no 1 de la RAMQ, version du 5 novembre 2026) :
+       - au taux horaire (annexe XIV) : des heures comme les autres, avec les codes d'activité 051028 « Gestion
+         administrative spécifique du GMF-U » et 051043 « Tâches médico-administratives et hospitalières »
+         (Demande de paiement – Tarif horaire, 1215) ; elles comptent dans le plafond annuel d'heures ;
+       - au mixte : le forfait horaire, qui paie « les services médicaux et les activités médico-administratives »
+         (annexe XXIII, par. 2.05 ; en GMF-U, codes 42094 et 42095), sans supplément puisqu'il n'y a pas d'acte ;
+       - à l'acte : aucun tarif trouvé pour ces activités ; rien n'est compté.
+       Majoration du territoire comprise. Rangées avec les heures : « Heures ou forfait horaire ». */
     const ADM = r.milieu === undefined || r.milieu === "gmfu" ? Math.max(0, +r.demiJourneesAdmin || 0) : 0, heuresAdmin = W * ADM * H;
-    const adminAuDela = Math.max(0, heuresAdmin - plafondHeures);
-    const administratif = (heuresAdmin - adminAuDela * (1 - PCT_AU_DELA / 100)) * m("tarifHoraire") * maj;
+    const administratifMixte = heuresAdmin * m("forfaitHoraireMixte") * maj;
     const garde = Math.max(0, +r.heuresGardeSurPlace || 0), heuresHoraire = heures + heuresAdmin + garde;
     const heuresAuDela = Math.max(0, heuresHoraire - plafondHeures);
     const gardeExcedent = Math.max(0, garde - Math.max(0, plafondHeures - heures - heuresAdmin));
@@ -419,7 +423,7 @@
     // Mixte : forfait horaire, part du tarif des visites et, en GMF-U, l'intervention de supervision
     // pour la demi-journée d'enseignement, ou les visites des apprenants.
     const mixte = {
-      forfaitHoraire: heures * m("forfaitHoraireMixte") * maj + administratif,
+      forfaitHoraire: heures * m("forfaitHoraireMixte") * maj + administratifMixte,
       visites: (visitesMixte + visitesSrv + (visitesApprenants ? visitesAppr + visitesPendant : 0)) * maj * m("pctMixte") / 100,
       // Avec l'intervention : l'acte, plus, à 100 %, les suppléments de l'annexe II à l'annexe XXIII permis durant la période
       // visée (Brochure no 1, version en vigueur au 5 novembre 2026) : forfait de responsabilité des patients vulnérables
@@ -438,8 +442,7 @@
     // (l'intervention de supervision n'existe qu'au mixte), sans forfait horaire.
     const pctActe = r.pctActe ?? 100;
     const acte = { visites: (visitesMixte + visitesSrv + visitesAppr + visitesPendant) * maj * pctActe / 100, ...base };
-    if (administratif > 0) acte.heures = administratif;
-    acte.total = acte.visites + administratif + commun;
+    acte.total = acte.visites + commun;
     // Frais de cabinet (loyer, personnel, équipement) remis à la clinique : un pourcentage
     // de la facturation RAMQ de la clinique (sans la compensation des frais de cabinet, les
     // activités en établissement ni les autres revenus) et un montant fixe. À l'acte seulement,
@@ -495,7 +498,7 @@
     const tarifMoyenRdv = tarifVisite(r.mix, palierFin, TF) * maj, tarifMoyenSrv = tarifSrv(palierFin) * maj;
     // Hausse du tarif moyen d'une visite au palier de 500 inscrits.
     const t0 = tarifVisite(r.mix, 0, TF), gainPalier = t0 > 0 ? tarifVisite(r.mix, 1, TF) / t0 - 1 : 0;
-    return { heures, heuresAdmin, administratif, garde, heuresHoraire, heuresAuDela, gardeAuDela, autresAuDela, plafondHeures, perteHeures, nbVisites, nbPriseEnCharge, inscritsDepart, inscritsFin, vulnerablesFin, semainesPalierHaut, gainPalier,
+    return { heures, heuresAdmin, administratifMixte, garde, heuresHoraire, heuresAuDela, gardeAuDela, autresAuDela, plafondHeures, perteHeures, nbVisites, nbPriseEnCharge, inscritsDepart, inscritsFin, vulnerablesFin, semainesPalierHaut, gainPalier,
       patientsVus, forfaitGmfPossible, detailCompensation, activites, detailActivites, basePolyvalence, polyvalence, pctPolyvalence, anneePratique, detailVolume, examens,
       visitesApprenants: W * T * apprenants, heuresSupervision: heuresSup, tarifMoyenRdv, tarifMoyenSrv,
       // Pour le mode composé (Loi 2) : majoration du territoire, sans-rendez-vous (nombre et valeur à 100 %) et
@@ -573,7 +576,9 @@
     const srvOrphelins = n0(g.nbSrv) * partOrph, orphelins = n0(g.valeurSrv) * partOrph;
     const enseignement = n0(g.supervisionCent), visitesApprenants = n0(g.visitesApprenants);
     const visites = Math.max(0, n0(g.nbVisites) - srvOrphelins - visitesApprenants), actes = visites * n0(p.tarifVisite);
-    const indirectes = n0(p.heuresIndirectes) * n0(o.semaines), heures = n0(g.heures) + n0(g.heuresAdmin) + indirectes, horaire = heures * n0(p.tauxHoraire);
+    // Les heures administratives du GMF-U relèvent de la banque d'heures administratives du milieu (montants à préciser) :
+    // elles ne sont pas comptées ici.
+    const indirectes = n0(p.heuresIndirectes) * n0(o.semaines), heures = n0(g.heures) + indirectes, horaire = heures * n0(p.tauxHoraire);
     const a = g.acte || {}, inchanges = n0(a.activites) + n0(a.compensation) + n0(a.autres) + n0(a.perDiem) + n0(a.polyvalence);
     const restent = inchanges + orphelins + enseignement;
     const sansMaj = capitation + actes + horaire, premiereLigne = sansMaj * maj, total = premiereLigne + restent;

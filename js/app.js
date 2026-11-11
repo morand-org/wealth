@@ -5055,7 +5055,7 @@ window.Verrou.quandOuvert(function () {
         gmfu && asNombre("Demi-journées au GMF-U par semaine", "totalGmfu", "d.-j.", 1, "Toutes : bureau, sans rendez-vous, enseignement et administratif."),
         gmfu && asNombre("Dont sans rendez-vous (SRV)", "srv", "d.-j.", 1, null, true),
         gmfu && asNombre("Dont enseignement", "enseignement", "d.-j.", 1, "Celles où vous supervisez des résidents.", true),
-        gmfu && asNombre("Dont administratives", "admin", "d.-j.", 1, "Gestion du GMF-U, comités, tâches administratives : payées au taux horaire, quel que soit votre mode.", true),
+        gmfu && asNombre("Dont administratives", "admin", "d.-j.", 1, "Gestion du GMF-U, tâches médico-administratives : payées à l'heure au taux horaire, au forfait horaire au mixte ; rien à l'acte.", true),
         bureau,
         !gmfu && asNombre("Demi-journées de rendez-vous par semaine", "demiJournees", "d.-j.", 1),
         si(() => !gmfu || bureauGmfu() > 0, asNombre(gmfu ? "Patients par demi-journée de bureau" : "Patients par demi-journée de rendez-vous", "patientsParDJ", "pat.", 0.5, "Vos propres patients, en moyenne.", true)),

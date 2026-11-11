@@ -347,7 +347,7 @@
       { p: "revenu.srvMemeJour", l: "Le SRV tombe le même jour qu'une demi-journée de rendez-vous", t: "check", si: "revenu.demiJourneesSRV&revenu.milieu=clinique&details",
         h: "Compensation des frais de cabinet : au plus 64,80 $ par jour civil, rendez-vous et sans rendez-vous confondus (EP 40, par. 14.01)." },
       { p: "revenu.demiJourneesAdmin", l: "Demi-journées administratives par semaine", u: "d.-j.", si: SI_GMFU,
-        h: "Gestion du GMF-U, comités, tâches médico-administratives : payées à l'heure, au plein taux horaire, quel que soit votre mode." },
+        h: "Gestion du GMF-U, tâches médico-administratives. Au taux horaire : des heures comme les autres (codes d'activité 051028 et 051043). Au mixte : le forfait horaire seulement (annexe XXIII, par. 2.05). À l'acte : aucun tarif prévu, rien n'est compté." },
       { p: "revenu.heuresParDJ", l: "Heures par demi-journée", u: "h", s: 0.25, si: "details" },
       { g: "Enseignement et apprenants", si: SI_GMFU },
       { p: "revenu.enseignement", l: "Demi-journées d'enseignement par semaine", u: "d.-j." },

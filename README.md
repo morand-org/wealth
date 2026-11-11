@@ -62,9 +62,13 @@ chacune, alignées et de même hauteur sur ordinateur.
   vue résidence : la comparaison sert à la choisir.
 - **Premier lancement en GMF-U** : le total des demi-journées au GMF-U, puis
   sa répartition (sans rendez-vous, enseignement, administratif) ; les
-  demi-journées de bureau en découlent. Les demi-journées administratives
-  sont payées à l'heure, au plein taux horaire, dans les trois modes
-  (majoration du territoire comprise, plafond annuel d'heures).
+  demi-journées de bureau en découlent. Demi-journées administratives
+  (Brochure no 1, version du 5 novembre 2026) : au taux horaire, des heures
+  comme les autres (codes d'activité 051028 et 051043, plafond annuel
+  d'heures) ; au mixte, le forfait horaire seulement (annexe XXIII,
+  par. 2.05 ; en GMF-U, codes 42094 et 42095) ; à l'acte, aucun tarif
+  trouvé, rien n'est compté. Le mode composé ne les compte pas (banque
+  d'heures administratives, montants à préciser).
 - **Codes** : le répertoire des actes, avec recherche par code ou par mot,
   et les formulaires de la CNESST.
 - **Loi 2** : l'estimateur du mode composé, ce qui change (les règles
