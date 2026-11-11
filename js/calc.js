@@ -495,6 +495,49 @@
   }
 
   /* ============================================================
+     MODE COMPOSÉ (Loi 2) : capitation 50 %, actes 30 %, taux horaire 20 % de l'enveloppe de la première ligne
+     (entente de principe entre le gouvernement et la FMOQ du 10 décembre 2025, version vulgarisée de la FMOQ ;
+     infolettre de la FMOQ du 30 avril 2026 : « modèle combiné 50-30-20 », option A ou B du taux horaire à décider).
+     Les montants (capitation par patient, part du tarif des actes, taux horaire) ne sont pas publiés au
+     11 novembre 2026 : COMPOSE.officiel reste null et la page « Loi 2 » calcule avec les hypothèses de la personne.
+     À la publication : remplir COMPOSE.officiel (montants, date, source), puis brancher le 4e mode (voir README).
+     ============================================================ */
+  const COMPOSE = {
+    parts: { capitation: 0.5, actes: 0.3, horaire: 0.2 },
+    source: "Entente de principe FMOQ-gouvernement du 10 décembre 2025 (version vulgarisée) ; infolettre FMOQ du 30 avril 2026",
+    // { capitation: $ par patient inscrit par année, suppVulnerable: $ de plus par patient vulnérable, pctActes: % du tarif,
+    //   tauxHoraire: $ par heure, date: "AAAA-MM-JJ", source: "…" }
+    officiel: null,
+  };
+  /* Revenu d'une année au mode composé, à partir du calcul du revenu (revenuGmfu) et de paramètres p :
+     capitation (inscrits moyens de l'année), actes (les visites au tarif de l'entente × la part payée), taux horaire (heures
+     en clinique). Hypothèse de l'app, en attendant les règles : les forfaits d'inscription, de volume et GMF sont remplacés
+     par la capitation ; les activités en établissement, la compensation des frais de cabinet et les autres revenus restent. */
+  function revenuCompose(g, p = {}) {
+    const n = v => Math.max(0, Number.isFinite(+v) ? +v : 0);
+    const inscrits = (n(g.inscritsDepart) + n(g.inscritsFin)) / 2;
+    const vulnerables = n(g.inscritsFin) > 0 ? n(g.vulnerablesFin) * inscrits / n(g.inscritsFin) : 0;
+    const a = g.acte || {}, valeurActes = n(a.visites);
+    const capitation = inscrits * n(p.capitation) + vulnerables * n(p.suppVulnerable);
+    const actes = valeurActes * n(p.pctActes) / 100, horaire = n(g.heures) * n(p.tauxHoraire);
+    const restent = n(a.activites) + n(a.compensation) + n(a.autres) + n(a.perDiem) + n(a.polyvalence);
+    const premiereLigne = capitation + actes + horaire, total = premiereLigne + restent;
+    const part = x => premiereLigne > 0 ? x / premiereLigne : 0;
+    return { inscrits, vulnerables, valeurActes, heures: n(g.heures), capitation, actes, horaire, restent, premiereLigne, total,
+      parts: { capitation: part(capitation), actes: part(actes), horaire: part(horaire) } };
+  }
+  /* Hypothèses de départ : celles qui redonnent un revenu cible (par exemple le brut du mode actuel), réparti selon les
+     parts de l'entente. Ce sont des hypothèses calculées, pas des montants officiels. */
+  function calibrerCompose(g, cible, parts = COMPOSE.parts) {
+    const r = revenuCompose(g, {}), pl = Math.max(0, (+cible || 0) - r.restent);
+    return {
+      capitation: r.inscrits > 0 ? pl * parts.capitation / r.inscrits : 0, suppVulnerable: 0,
+      pctActes: r.valeurActes > 0 ? pl * parts.actes / r.valeurActes * 100 : 0,
+      tauxHoraire: r.heures > 0 ? pl * parts.horaire / r.heures : 0,
+    };
+  }
+
+  /* ============================================================
      COMPARER LES ACTES : ce que rapporte chaque acte selon le mode, l'intervention de supervision ou
      les visites des apprenants, une demi-journée de votre choix, et les formulaires de la CNESST.
      ============================================================ */
@@ -1256,7 +1299,7 @@
     return { plafondQc, admissibleQc, taux, creditQc: admissibleQc * taux, plafondFed, deduction };
   }
 
-  const Calc = { CELIAPP, celiappParAn, ACTES, CNESST, valeurActes, supervisionOuVisites, demiJourneeSupervision, demiJourneeActes, P2026, P2027, parametres, utiliserAnnee, avecAnnee, parametresActifs: () => PAR, VISITES, PRISE_EN_CHARGE, TARIFS_DEFAUT, TARIFS_LIEU, MONTANTS_LIEU, RAMQ, PCT_AU_DELA, PCT_GARDE, GARDE_MAX_94, SUPERVISION_MAX_APRES_MIDI, partAssiduite, lieuTarifs, montantsLieu, montantsVolume, tauxPolyvalence, SEUILS_POLYVALENCE, ACTIVITES_POLYVALENTES, compensationCabinet, tarifVisite, revenuGmfu, joursActivite, revenuActivite, impotParticulier, impotSalarie, impotMixte, FMRQ, salaireResident, transfertsConjoints, prestationsFamille, primeMedicaments, tauxMarginal,
+  const Calc = { COMPOSE, revenuCompose, calibrerCompose, CELIAPP, celiappParAn, ACTES, CNESST, valeurActes, supervisionOuVisites, demiJourneeSupervision, demiJourneeActes, P2026, P2027, parametres, utiliserAnnee, avecAnnee, parametresActifs: () => PAR, VISITES, PRISE_EN_CHARGE, TARIFS_DEFAUT, TARIFS_LIEU, MONTANTS_LIEU, RAMQ, PCT_AU_DELA, PCT_GARDE, GARDE_MAX_94, SUPERVISION_MAX_APRES_MIDI, partAssiduite, lieuTarifs, montantsLieu, montantsVolume, tauxPolyvalence, SEUILS_POLYVALENCE, ACTIVITES_POLYVALENTES, compensationCabinet, tarifVisite, revenuGmfu, joursActivite, revenuActivite, impotParticulier, impotSalarie, impotMixte, FMRQ, salaireResident, transfertsConjoints, prestationsFamille, primeMedicaments, tauxMarginal,
     remboursementReer, impotDividendes, impotSociete, impotSalaireEtSociete, comparerSociete, simulerDettes, interetsEtudesPeriodes, tauxReel, tauxMensuel, moisRestants, paiementPour, projeterReee, projeterValeurNette, rendementProfil, fraisGarde };
   if (typeof module !== "undefined" && module.exports) module.exports = Calc;
   else racine.Calc = Calc;

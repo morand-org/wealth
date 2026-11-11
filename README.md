@@ -333,10 +333,22 @@ côte à côte (ci-dessus). Les anciennes adresses `#revenu/actes` et
 
 À l'acte : règles en vigueur avant la Loi 2, avec frais de cabinet
 (pourcentage de la facturation et montant fixe). Le mode de rémunération
-composé de la première ligne (prise en charge, actes et taux horaire) a
-fait l'objet d'une entente finale entre la FMOQ et le gouvernement
-(13 août 2026) ; il n'est pas encore en vigueur et ses montants restent à
-fixer : l'app ne le calcule pas.
+composé de la première ligne a fait l'objet d'une entente finale entre la
+FMOQ et le gouvernement (13 août 2026) ; ses montants restent à publier.
+L'onglet **Loi 2** de Comparer est prêt : capitation 50 %, actes 30 %, taux
+horaire 20 % (entente de principe du 10 décembre 2025, version vulgarisée de
+la FMOQ ; infolettre de la FMOQ du 30 avril 2026). En attendant les montants,
+le calcul suit vos hypothèses (capitation par patient, supplément par patient
+vulnérable, part du tarif des actes, taux horaire), toujours marquées
+« hypothèse » ; « Partir de mon revenu actuel » les calcule pour redonner le
+brut du mode actuel, réparti 50-30-20. Hypothèse de l'app : la capitation
+remplace les forfaits d'inscription, de volume et GMF ; le reste ne change pas.
+
+À la publication des montants : remplir `Calc.COMPOSE.officiel` dans
+`js/calc.js` (montants, date, source) et ajuster `revenuCompose` aux règles
+publiées ; la page prend alors les montants officiels. Ensuite, ajouter le
+mode composé aux modes comparés (Aperçu, Revenu, Comparer, Impôt) ; le rapport
+PDF (`js/rapport.js`) ne change qu'avec l'accord de la personne.
 
 ## Avec d'autres agents
 

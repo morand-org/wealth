@@ -1127,8 +1127,8 @@ async function comparerActes(b, base) {
     conclusion: document.getElementById("rv-sup-conclusion").textContent, bouton: (document.querySelector("#rv-sup-actions button") || {}).textContent || "",
     nav: (document.querySelector('.nav [aria-current="page"]') || {}).dataset?.onglet }));
   const actes = await visibles();
-  verifier("comparer : #revenu/actes mène à l'onglet Actes ; quatre sous-onglets ; le répertoire, puis les actes et la CNESST repliés",
-    vue.hash === "#comparer/actes" && vue.onglets.join() === "Modes,Demi-journée,Actes,Offres" && vue.nav === "comparer"
+  verifier("comparer : #revenu/actes mène à l'onglet Actes ; cinq sous-onglets ; le répertoire, puis les actes et la CNESST repliés",
+    vue.hash === "#comparer/actes" && vue.onglets.join() === "Modes,Demi-journée,Actes,Offres,Loi 2" && vue.nav === "comparer"
     && actes.join() === "rv-carte-repertoire,rv-carte-actes,rv-carte-cnesst" && !(await debord())
     && await p.evaluate(() => !document.getElementById("rv-carte-actes").open && !document.getElementById("rv-carte-cnesst").open && !document.getElementById("rv-sup-plus").open), { vue, actes });
   verifier("actes : la supervision rapporte 51,94 $ de plus, environ 4 156 $ sur 80 demi-journées ; les visites dès 10", vue.conclusion.includes("51,94") && vue.conclusion.replace(/\s/g, " ").includes("4 156")
@@ -1168,7 +1168,7 @@ async function comparerActes(b, base) {
   const parOnglet = await p.evaluate(() => { const n = {}; document.querySelectorAll("#v-comparer .detail-seul[data-sous]").forEach(c => { n[c.dataset.sous] = (n[c.dataset.sous] || 0) + 1; });
     return { n, cartes: document.querySelectorAll("#v-comparer .carte.detail-seul").length }; });
   verifier("comparer : chaque carte du détail appartient à un onglet", Object.values(parOnglet.n).reduce((a, x) => a + x, 0) === parOnglet.cartes
-    && Object.keys(parOnglet.n).join() === "modes,demijournee,actes,offres", parOnglet);
+    && Object.keys(parOnglet.n).join() === "modes,demijournee,actes,offres,loi2", parOnglet);
   await allerA(p, "comparer"); await p.waitForTimeout(200);
   const resume = await p.evaluate(() => {
     const c = document.getElementById("rv-r-modes"), hero = document.getElementById("cp-hero"), liens = document.getElementById("cp-r-liens");
@@ -1202,13 +1202,13 @@ async function comparerActes(b, base) {
   const clsc = await p.evaluate(() => ({ hash: location.hash, onglets: [...document.querySelectorAll("#cp-onglets button")].map(x => x.textContent),
     seuils: !!document.getElementById("rv-carte-seuils").offsetParent, texte: document.getElementById("rv-carte-seuils").textContent,
     debord: document.documentElement.scrollWidth > document.documentElement.clientWidth }));
-  verifier("seuils : en CLSC, l'onglet Modes et ses seuils, sans la supervision", clsc.hash === "#comparer/modes" && clsc.onglets.join() === "Modes,Demi-journée,Actes,Offres" && clsc.seuils && !clsc.debord
+  verifier("seuils : en CLSC, l'onglet Modes et ses seuils, sans la supervision", clsc.hash === "#comparer/modes" && clsc.onglets.join() === "Modes,Demi-journée,Actes,Offres,Loi 2" && clsc.seuils && !clsc.debord
     && clsc.texte.includes("patients par demi-journée") && clsc.texte.includes("Dès") && !clsc.texte.includes("Visites plutôt que la supervision"), clsc);
   await remplacer(p, { "revenu.milieu": "clinique" });
   await allerA(p, "comparer/modes");
   const clinique = { hash: await p.evaluate(() => location.hash), onglets: await p.evaluate(() => [...document.querySelectorAll("#cp-onglets button")].map(x => x.textContent)), cartes: await visibles() };
   verifier("comparer : en clinique, à l'acte seulement, l'onglet « Rythme » garde le revenu selon les demi-journées, sans les modes ni les seuils",
-    clinique.hash === "#comparer/modes" && clinique.onglets.join() === "Rythme,Demi-journée,Actes,Offres" && clinique.cartes.join() === "rv-carte-sens", clinique);
+    clinique.hash === "#comparer/modes" && clinique.onglets.join() === "Rythme,Demi-journée,Actes,Offres,Loi 2" && clinique.cartes.join() === "rv-carte-sens", clinique);
   await allerA(p, "comparer");
   const horsGmfu = await p.evaluate(() => ({ hero: document.getElementById("cp-hero").hidden, modes: document.getElementById("rv-r-modes").hidden,
     sup: !!document.getElementById("rv-r-supervision").offsetParent, texte: document.getElementById("rv-r-supervision").textContent, intro: document.getElementById("sab-intro").textContent,
@@ -1603,6 +1603,31 @@ async function superviseurAB(b, base) {
   await ctx.close();
 }
 
+/* 41 f. Loi 2 : la page du mode composé. Sans montant officiel, elle le dit et attend des hypothèses ; « Partir de mon
+   revenu actuel » redonne le brut du mode actuel, réparti 50-30-20 ; une hypothèse tapée change le résultat ; 320 px. */
+async function loi2(b, base) {
+  const { ctx, p, erreurs } = await ouvrir(b, base, { page: "comparer", largeur: 320 });
+  await remplacer(p, { "revenu.milieu": "gmfu", "revenu.annee": "type", "revenu.modeBudget": "mixte", "revenu.inscritsDebut": 1000, "revenu.partVulnerable": 30 });
+  await allerA(p, "comparer/loi2");
+  const lire = () => p.evaluate(() => ({ statut: document.getElementById("loi2-statut").textContent, res: document.getElementById("loi2-resultat").textContent,
+    vu: !!document.getElementById("cp-loi2").offsetParent, onglet: !!document.querySelector('#cp-onglets [data-v="loi2"], #cp-onglets button[aria-pressed="true"]'),
+    debord: document.documentElement.scrollWidth > document.documentElement.clientWidth }));
+  const v0 = await lire();
+  verifier("Loi 2 : onglet de Comparer ; sans montant officiel, la page le dit et attend des hypothèses", v0.vu && v0.statut.includes("pas encore publiés") && v0.res.includes("Inscrivez vos hypothèses") && !v0.debord, v0);
+  await p.click("#loi2-calibrer"); await p.waitForTimeout(300);
+  const cal = await p.evaluate(() => { const R = window.Wealthnord.resultats(), S = window.Wealthnord.etat(), x = window.Calc.revenuCompose(R.rev, S.loi2);
+    return { total: x.total, cible: R.rev[R.mode].total, parts: x.parts, texte: document.getElementById("loi2-resultat").textContent }; });
+  verifier("Loi 2 : « Partir de mon revenu actuel » redonne le brut du mode actuel, réparti 50-30-20, marqué « hypothèse »",
+    Math.abs(cal.total - cal.cible) < 20 && Math.abs(cal.parts.capitation - 0.5) < 0.001 && Math.abs(cal.parts.actes - 0.3) < 0.001 && cal.texte.includes("hypothèse"), cal);
+  await p.fill("#rapide-loi2-tauxHoraire", "0"); await p.waitForTimeout(400);
+  const zero = await p.evaluate(() => ({ h: window.Wealthnord.etat().loi2.tauxHoraire, texte: document.getElementById("loi2-resultat").textContent }));
+  verifier("Loi 2 : une hypothèse tapée change le résultat", zero.h === 0 && !/Taux horaire[^$]*[1-9][\d\s\u00a0]*\$/.test(zero.texte.split("Brut")[0].split("Taux horaire")[1] || ""), zero.h);
+  await p.click("#loi2-effacer"); await p.waitForTimeout(300);
+  verifier("Loi 2 : « Effacer mes hypothèses » revient à l'attente", (await lire()).res.includes("Inscrivez vos hypothèses"));
+  verifier("Loi 2 : aucune erreur", erreurs.length === 0, erreurs);
+  await ctx.close();
+}
+
 /* 41 e. Projection : l'hypothèse dite sous la valeur nette projetée (exemple, avec ses dépenses). */
 async function hypotheseProjection(b, base) {
   const { ctx, p, erreurs } = await ouvrir(b, base, { page: "avenir" });
@@ -1830,7 +1855,7 @@ async function ciblesTactiles(b, base) {
   const srv = await serveur(), base = `http://127.0.0.1:${srv.address().port}${PREFIXE}`;
   const b = await chromium.launch();
   try {
-    for (const scenario of [exemple, brochure, alertes, sauvegarde, robustesse, injection, rapport, nouvelleVersion, budget, logo, sousOnglets, repartition, verrou, verrouDelai, verrouOnglets, sommaireComptable, monteCarlo, apercuCoherent, assistantVide, assistantMode, rendementProfil, lexiqueRamq, fraisGardeMenage, acomptesCeliapp, finitions, enteteEtChamps, transfert, residence, resumeDetail, tempsQuiPasse, planCalendrier, comparerActes, outilsAvances, etSi, deuxOffres, demarrageRapide, demarrageGmfu, importSur, saisieSolide, accessibiliteLot8, prochainPaiement, superviseurAB, supervisionPlan, reerDroits, premiereAnneeApres, hypotheseProjection, repertoireActes, revenuEtImpot, ciblesTactiles]) {
+    for (const scenario of [exemple, brochure, alertes, sauvegarde, robustesse, injection, rapport, nouvelleVersion, budget, logo, sousOnglets, repartition, verrou, verrouDelai, verrouOnglets, sommaireComptable, monteCarlo, apercuCoherent, assistantVide, assistantMode, rendementProfil, lexiqueRamq, fraisGardeMenage, acomptesCeliapp, finitions, enteteEtChamps, transfert, residence, resumeDetail, tempsQuiPasse, planCalendrier, comparerActes, outilsAvances, etSi, deuxOffres, demarrageRapide, demarrageGmfu, importSur, saisieSolide, accessibiliteLot8, prochainPaiement, superviseurAB, supervisionPlan, reerDroits, premiereAnneeApres, hypotheseProjection, loi2, repertoireActes, revenuEtImpot, ciblesTactiles]) {
       if (process.env.SCENARIOS && !process.env.SCENARIOS.split(",").includes(scenario.name)) continue;
       try { await scenario(b, base); } catch (e) { verifier(`${scenario.name} : déroulement`, false, String(e).split("\n")[0]); }
     }

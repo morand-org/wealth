@@ -610,6 +610,20 @@ verifier("transition incorporée : une seule déclaration paie davantage, et gar
   && proche(uneDec.societe.dividendes, 127200, 0.01) && proche(uneDec.totalGlobal, uneDec.total + uneDec.societe.impotSociete, 1e-6) && uneDec.rrq > 0,
   { fed: uneDec.fed, qc: uneDec.qc });
 
+/* Mode composé (Loi 2) : aucun montant officiel tant que rien n'est publié ; le calcul suit les hypothèses ; calibré sur un
+   revenu cible, il le redonne, réparti 50-30-20 sur la première ligne. */
+{
+  const g = C.revenuGmfu({ ...rev, inscritsDebut: 1000, partVulnerable: 30 });
+  verifier("Loi 2 : parts de l'entente 50-30-20, aucun montant officiel publié", C.COMPOSE.parts.capitation === 0.5 && C.COMPOSE.parts.actes === 0.3 && C.COMPOSE.parts.horaire === 0.2 && C.COMPOSE.officiel === null);
+  const p = { capitation: 100, suppVulnerable: 20, pctActes: 30, tauxHoraire: 50 }, x = C.revenuCompose(g, p);
+  verifier("Loi 2 : capitation, actes et taux horaire selon les hypothèses", proche(x.capitation, x.inscrits * 100 + x.vulnerables * 20, 1e-6)
+    && proche(x.actes, g.acte.visites * 0.3, 1e-6) && proche(x.horaire, g.heures * 50, 1e-6) && proche(x.total, x.capitation + x.actes + x.horaire + x.restent, 1e-6), x);
+  const cible = 250000, cal = C.calibrerCompose(g, cible), y = C.revenuCompose(g, cal);
+  verifier("Loi 2 : calibré sur un revenu cible, il le redonne, réparti 50-30-20", proche(y.total, cible, 0.01) && proche(y.parts.capitation, 0.5, 1e-9)
+    && proche(y.parts.actes, 0.3, 1e-9) && proche(y.parts.horaire, 0.2, 1e-9), { total: y.total, parts: y.parts });
+  verifier("Loi 2 : sans hypothèse, rien de la première ligne n'est compté", C.revenuCompose(g, {}).premiereLigne === 0);
+}
+
 /* Service worker : à l'activation, il ne supprime que les anciens caches de WealthMorand ; ceux des autres sections
    d'une même adresse (accueil, guides, carte) restent. Exécuté avec un faux navigateur. */
 (async () => {

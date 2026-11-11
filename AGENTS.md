@@ -37,8 +37,10 @@ Lisez ce fichier en entier avant de commencer. Il passe avant vos habitudes.
    Chaque correction ajoute ou ajuste un test qui aurait échoué avant.
    Tests ciblés : `SCENARIOS=residence,transfert node tests/navigateur.test.js`.
 8. **Décisions déjà prises : ne pas les reproposer comme nouveautés.**
-   - Le mode de rémunération composé (Loi 2) n'est pas calculé tant que ses
-     montants ne sont pas publiés (entente finale du 13 août 2026).
+   - Le mode de rémunération composé (Loi 2) : l'onglet « Loi 2 » de Comparer le
+     calcule avec les hypothèses de la personne, marquées « hypothèse ». Aucun
+     montant officiel n'est inventé : `Calc.COMPOSE.officiel` reste `null`
+     jusqu'à la publication (entente finale du 13 août 2026).
    - Comptes : Supabase, un seul compte (celui de la personne), données
      chiffrées sur l'appareil, conception décrite dans `README.md`. Le lien de
      transfert avec code reste offert.

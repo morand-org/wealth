@@ -1996,6 +1996,72 @@ window.Verrou.quandOuvert(function () {
     rendreSeuils(R);
     rendreActes(R);
     rendreOffres(R);
+    rendreLoi2(R);
+  }
+  /* Loi 2 : le mode composé (capitation, actes, taux horaire). Tant que ses montants ne sont pas publiés, le calcul suit
+     les hypothèses de la personne, toujours marquées ; « Partir de mon revenu actuel » les calcule pour redonner le brut
+     du mode actuel, réparti selon l'entente. Dès que Calc.COMPOSE.officiel est rempli, ses montants priment. */
+  function hypothesesLoi2() {
+    const o = C.COMPOSE.officiel, h = S.loi2 || {};
+    if (o) return { officiel: true, capitation: o.capitation, suppVulnerable: o.suppVulnerable || 0, pctActes: o.pctActes, tauxHoraire: o.tauxHoraire };
+    return { officiel: false, capitation: h.capitation, suppVulnerable: h.suppVulnerable, pctActes: h.pctActes, tauxHoraire: h.tauxHoraire };
+  }
+  function rendreLoi2(R) {
+    const carte = document.getElementById("cp-loi2"), P = C.COMPOSE.parts, o = C.COMPOSE.officiel;
+    if (!carte.dataset.monte) {
+      carte.dataset.monte = "1";
+      const tete = el("div", "carte-tete"); tete.appendChild(el("h2", null, "Le mode composé (Loi 2)"));
+      const statut = el("p", "aide"); statut.id = "loi2-statut";
+      const parts = el("div"); parts.id = "loi2-parts";
+      const titreH = el("h3", "sous-titre", "Vos hypothèses"); titreH.id = "loi2-titre-hyp";
+      const champs = el("div", "champs-rapides"); champs.id = "loi2-champs";
+      const a = el("div", "actions"), cal = el("button", "bouton secondaire", "Partir de mon revenu actuel"); cal.type = "button"; cal.id = "loi2-calibrer";
+      cal.addEventListener("click", () => {
+        const c = C.calibrerCompose(R.rev, R.rev[R.mode].total), r2 = x => Math.round(x * 100) / 100;
+        S.loi2 = { capitation: r2(c.capitation), suppVulnerable: 0, pctActes: r2(c.pctActes), tauxHoraire: r2(c.tauxHoraire) }; S.meta.exemple = false; sauver(); tout();
+        toast("Hypothèses calculées : le brut de votre mode actuel, réparti 50-30-20.");
+      });
+      const eff = el("button", "bouton secondaire", "Effacer mes hypothèses"); eff.type = "button"; eff.id = "loi2-effacer";
+      eff.addEventListener("click", () => { S.loi2 = { capitation: null, suppVulnerable: null, pctActes: null, tauxHoraire: null }; sauver(); tout(); });
+      a.append(cal, eff);
+      const res = el("div"); res.id = "loi2-resultat";
+      const note = el("p", "aide"); note.id = "loi2-note";
+      carte.append(tete, statut, parts, titreH, champs, a, res, note);
+    }
+    document.getElementById("loi2-statut").textContent = o
+      ? `Montants officiels du ${dateLongue(o.date)} (${o.source}).`
+      : "Ses montants ne sont pas encore publiés. En attendant, le calcul suit vos hypothèses : inscrivez-les, ou partez de votre revenu actuel. Dès leur publication, l'app prendra les montants officiels.";
+    rangees("loi2-parts", [
+      { titre: "Capitation", sous: "Par patient inscrit, chaque année", valeur: pct(P.capitation, 0) },
+      { titre: "Actes", sous: "Une part du tarif de chaque visite", valeur: pct(P.actes, 0) },
+      { titre: "Taux horaire", sous: "Les heures en clinique", valeur: pct(P.horaire, 0) },
+    ]);
+    document.getElementById("loi2-titre-hyp").hidden = !!o;
+    document.getElementById("loi2-champs").hidden = !!o;
+    document.getElementById("loi2-calibrer").closest(".actions").hidden = !!o;
+    if (!o) champsRapides("loi2-champs", [
+      { p: "loi2.capitation", l: "Capitation par patient inscrit", u: "$/an", s: 1 },
+      { p: "loi2.suppVulnerable", l: "De plus par patient vulnérable", u: "$/an", s: 1 },
+      { p: "loi2.pctActes", l: "Part du tarif des actes", u: "%", s: 0.5 },
+      { p: "loi2.tauxHoraire", l: "Taux horaire", u: "$/h", s: 1 },
+    ]);
+    const h = hypothesesLoi2(), x = C.revenuCompose(R.rev, h), z = document.getElementById("loi2-resultat"); z.textContent = "";
+    const marque = h.officiel ? "officiel" : "hypothèse";
+    if (x.premiereLigne <= 0) z.appendChild(el("p", "aide", "Inscrivez vos hypothèses, ou partez de votre revenu actuel, pour voir votre revenu au mode composé."));
+    else {
+      z.appendChild(el("h3", "sous-titre", "Votre année au mode composé"));
+      z.appendChild(rangees(el("div"), [
+        { titre: "Capitation", sous: `${nb(x.inscrits, 0)} patients inscrits en moyenne${x.vulnerables > 0 && +h.suppVulnerable > 0 ? `, dont ${nb(x.vulnerables, 0)} vulnérables` : ""} · ${pct(x.parts.capitation, 0)}`, valeur: $(x.capitation), valeurSous: marque },
+        { titre: "Actes", sous: `${$(x.valeurActes)} de visites au tarif, à ${nb(+h.pctActes || 0, 1)} % · ${pct(x.parts.actes, 0)}`, valeur: $(x.actes), valeurSous: marque },
+        { titre: "Taux horaire", sous: `${nb(x.heures, 0)} h en clinique à ${$2(+h.tauxHoraire || 0)} · ${pct(x.parts.horaire, 0)}`, valeur: $(x.horaire), valeurSous: marque },
+        x.restent > 0.5 && { titre: "Le reste, inchangé", sous: "Activités en établissement, demi-per diem, compensation des frais de cabinet, autres revenus", valeur: $(x.restent) },
+        { titre: "Brut de l'année", cls: "total", valeur: $(x.total), valeurSous: marque },
+        ...R.modes.map(m => ({ titre: `Par rapport ${AU_MODE[m]}`, sous: `${$(R.rev[m].total)} brut`, valeur: signe(x.total - R.rev[m].total) })),
+      ]));
+    }
+    document.getElementById("loi2-note").textContent = `Selon l'entente de principe du 10 décembre 2025 entre le gouvernement et la FMOQ : capitation ${pct(P.capitation, 0)}, actes ${pct(P.actes, 0)}, taux horaire ${pct(P.horaire, 0)}. `
+      + "Hypothèse de l'app, en attendant les règles : la capitation remplace les forfaits d'inscription, de volume et GMF ; le reste ne change pas. "
+      + "Exclusion facultative prévue, au choix du médecin : médecins enseignants, de 60 ans et plus, jeunes médecins, entre autres. Montants avant les frais et l'impôt.";
   }
   // En tête : le mode le plus payant, son brut en gros et son net dessous. Avec un seul mode, rien : la supervision suit.
   function heroComparer(R) {
@@ -4142,7 +4208,7 @@ window.Verrou.quandOuvert(function () {
   /* Sous-onglets de Comparer, du Budget et du Patrimoine : des pages plus courtes sur téléphone. Le choix est
      gardé sur cet appareil ; une adresse comme #budget/dettes ouvre directement un sous-onglet. */
   const SOUS_ONGLETS = {
-    comparer: [["modes", "Modes"], ["demijournee", "Demi-journée"], ["actes", "Actes"], ["offres", "Offres"]],
+    comparer: [["modes", "Modes"], ["demijournee", "Demi-journée"], ["actes", "Actes"], ["offres", "Offres"], ["loi2", "Loi 2"]],
     budget: [["mois", "Ce mois-ci"], ["annee", "L'année"], ["dettes", "Dettes"]],
     avenir: [["aujourdhui", "Aujourd'hui"], ["projection", "Projection"], ["placements", "Placements"], ["proches", "Proches"]],
   };
