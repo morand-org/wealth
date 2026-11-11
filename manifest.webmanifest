@@ -1,0 +1,24 @@
+{
+  "id": "./",
+  "name": "WealthMorand",
+  "short_name": "WealthMorand",
+  "description": "Revenu, impôt, dettes et avenir du ménage, calculés sur cet appareil.",
+  "lang": "fr-CA",
+  "dir": "ltr",
+  "start_url": "./#apercu",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f5f4f0",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icones/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icones/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icones/icone-masquable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Budget", "url": "./#budget", "icons": [{ "src": "icones/icone-192.png", "sizes": "192x192" }] },
+    { "name": "Patrimoine", "url": "./#avenir", "icons": [{ "src": "icones/icone-192.png", "sizes": "192x192" }] }
+  ]
+}
