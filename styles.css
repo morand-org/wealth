@@ -431,6 +431,13 @@ a.tuile:hover { border-color: var(--trait); }
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20h4L19 9l-4-4L4 16v4Z'/%3E%3Cpath d='m13.5 6.5 4 4'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+/* Personnaliser vos données : une roue dentée, la même dans toutes les pages, à droite du titre. Elle ouvre les
+   données de la page (revenu et pratique, impôt, famille, épargne). */
+.bouton-modifier.bouton-reglages { width: 40px; height: 40px; padding: 0; gap: 0; justify-content: center; border-radius: 50%; border-color: var(--ligne); color: var(--encre-2); }
+.bouton-modifier.bouton-reglages:hover { color: var(--encre); border-color: var(--trait); }
+.bouton-modifier.bouton-reglages::before { width: 19px; height: 19px;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E") center / contain no-repeat; }
 
 /* ---------- Flux du mois : barre empilée ---------- */
 .flux-barre { display: flex; gap: 2px; height: 14px; }
@@ -955,6 +962,9 @@ a.tuile:hover { border-color: var(--trait); }
   .vue > .tete-page { grid-column: 1; grid-row: 1; flex-wrap: wrap; justify-content: flex-start; column-gap: 10px; row-gap: 8px; align-self: start; }
   .vue > .tete-page h1 { margin-right: 0; min-width: 0; font-size: clamp(1.7rem, 7.4vw, 2.15rem); }
   .vue > .barre-outils { grid-column: 2; grid-row: 1; align-self: start; padding-top: 2px; }
+  /* La roue dentée, au bout du titre, rejoint la rangée d'icônes de droite ; même taille qu'elles (44 px). */
+  .vue > .tete-page:has(.bouton-reglages) { position: relative; padding-right: 50px; }
+  .vue > .tete-page .bouton-reglages { position: absolute; top: 2px; right: -12px; width: 44px; height: 44px; margin: 0; }
   .vue.mode-detail > .segment.parcours { max-width: none; }
 }
 /* Téléphone étroit : Installer reste dans la page Données ; les trois autres icônes suffisent. */

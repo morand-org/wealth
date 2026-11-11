@@ -1793,6 +1793,10 @@ async function revenuEtImpot(b, base) {
   verifier("barre du bas : Revenu, Comparer, Codes, Loi 2, Finances", rv.nav.join() === "revenu,comparer,codes,loi2,budget,donnees"
     && rv.noms.join() === "Revenu,Comparer,Codes,Loi 2,Finances", rv);
   verifier("revenu : plus d'onglet Impôt en haut ; Revenu marqué", rv.section.length === 0 && rv.marque === "revenu", rv);
+  const roues = await p.evaluate(() => [...document.querySelectorAll(".tete-page .bouton-modifier[data-feuille]")].map(b => ({ roue: b.classList.contains("bouton-reglages"),
+    nom: b.getAttribute("aria-label") || "", texte: b.textContent.trim(), taille: Math.round(b.getBoundingClientRect().width) || null })));
+  verifier("en-têtes : une roue dentée « Personnaliser vos données », la même dans les 7 pages, sans texte visible",
+    roues.length === 7 && roues.every(r => r.roue && r.nom.startsWith("Personnaliser vos données") && r.texte === "Personnaliser"), roues);
   await allerA(p, "budget");
   const bu = await etat();
   verifier("finances : « Budget · Patrimoine · Impôt » en haut du budget ; Finances marqué", bu.section.join() === "Budget*,Patrimoine,Impôt" && bu.marque === "budget", bu);

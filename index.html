@@ -137,7 +137,7 @@
 
     <!-- ============ REVENU ============ -->
     <section class="vue" id="v-revenu" aria-labelledby="h-revenu" hidden>
-      <header class="tete-page"><a class="retour-resume detail-seul" href="#revenu">Résumé</a><h1 id="h-revenu">Revenu</h1><button type="button" class="bouton-modifier" data-feuille="revenu">Modifier</button></header>
+      <header class="tete-page"><a class="retour-resume detail-seul" href="#revenu">Résumé</a><h1 id="h-revenu">Revenu</h1><button type="button" class="bouton-modifier bouton-reglages" data-feuille="revenu" aria-label="Personnaliser vos données : revenu et pratique" title="Personnaliser vos données"><span class="cache-visuel">Personnaliser</span></button></header>
       <div class="segment parcours" id="rv-parcours"></div>
       <div class="choix-milieu pratique-seule detail-seul">
         <label for="rv-milieu">Pratique principale</label>
@@ -185,7 +185,7 @@
     <!-- Comparer : le meilleur mode, une demi-journée de supervision, les actes et deux offres. Le résumé d'abord ;
          le détail en sous-onglets (Modes · Demi-journée · Actes · Offres). Les cartes gardent leurs identifiants. -->
     <section class="vue" id="v-comparer" aria-labelledby="h-comparer" hidden>
-      <header class="tete-page"><a class="retour-resume detail-seul" href="#comparer">Résumé</a><h1 id="h-comparer">Comparer</h1><button type="button" class="bouton-modifier" data-feuille="revenu">Modifier</button></header>
+      <header class="tete-page"><a class="retour-resume detail-seul" href="#comparer">Résumé</a><h1 id="h-comparer">Comparer</h1><button type="button" class="bouton-modifier bouton-reglages" data-feuille="revenu" aria-label="Personnaliser vos données : revenu et pratique" title="Personnaliser vos données"><span class="cache-visuel">Personnaliser</span></button></header>
       <div class="onglets detail-seul" id="cp-onglets"></div>
       <div class="hero resume-seul" id="cp-hero"></div>
       <div class="carte resume-seul" id="rv-r-modes" hidden></div>
@@ -254,7 +254,7 @@
 
         <!-- ============ CODES : le répertoire des actes et les formulaires de la CNESST ============ -->
     <section class="vue mode-detail" id="v-codes" aria-labelledby="h-codes" hidden>
-      <header class="tete-page"><h1 id="h-codes">Codes de facturation</h1><button type="button" class="bouton-modifier" data-feuille="revenu">Modifier</button></header>
+      <header class="tete-page"><h1 id="h-codes">Codes de facturation</h1><button type="button" class="bouton-modifier bouton-reglages" data-feuille="revenu" aria-label="Personnaliser vos données : revenu et pratique" title="Personnaliser vos données"><span class="cache-visuel">Personnaliser</span></button></header>
       <div class="carte" id="rv-carte-repertoire">
         <div class="carte-tete"><h2>Répertoire des actes</h2><span class="carte-sous" id="rep-compte" aria-live="polite"></span></div>
         <p class="aide">GMF-U en établissement, au mode mixte : le tarif de la RAMQ et ce que vous recevez. Cherchez par code ou par mot.</p>
@@ -276,7 +276,7 @@
     <!-- ============ LOI 2 : le mode composé en première ligne ============ -->
     <!-- Estimateur (hypothèses, puis montants officiels dès leur publication) · Ce qui change · Documents. -->
     <section class="vue mode-detail" id="v-loi2" aria-labelledby="h-loi2" hidden>
-      <header class="tete-page"><h1 id="h-loi2">Loi 2</h1><button type="button" class="bouton-modifier" data-feuille="revenu">Modifier</button></header>
+      <header class="tete-page"><h1 id="h-loi2">Loi 2</h1><button type="button" class="bouton-modifier bouton-reglages" data-feuille="revenu" aria-label="Personnaliser vos données : revenu et pratique" title="Personnaliser vos données"><span class="cache-visuel">Personnaliser</span></button></header>
       <div class="onglets" id="l2-onglets"></div>
       <div class="carte" id="cp-loi2" data-sous="estimateur"></div>
       <div class="carte" id="l2-regles" data-sous="regles"></div>
@@ -285,7 +285,7 @@
 
     <!-- ============ IMPÔT (dans Finances : « Budget · Patrimoine · Impôt ») ============ -->
     <section class="vue" id="v-impot" aria-labelledby="h-impot" hidden>
-      <header class="tete-page"><a class="retour-resume detail-seul" href="#impot">Résumé</a><h1 id="h-impot">Impôt 2026</h1><button type="button" class="bouton-modifier" data-feuille="impot">Modifier</button></header>
+      <header class="tete-page"><a class="retour-resume detail-seul" href="#impot">Résumé</a><h1 id="h-impot">Impôt 2026</h1><button type="button" class="bouton-modifier bouton-reglages" data-feuille="impot" aria-label="Personnaliser vos données : impôt" title="Personnaliser vos données"><span class="cache-visuel">Personnaliser</span></button></header>
       <nav class="onglets onglets-section" aria-label="Finances"><a href="#budget" data-section="budget">Budget</a><a href="#avenir" data-section="avenir">Patrimoine</a><a href="#impot" data-section="impot">Impôt</a></nav>
       <div class="segment parcours" id="im-parcours"></div>
       <div class="segment pratique-seule detail-seul" id="im-mode"></div>
@@ -332,7 +332,7 @@
 
     <!-- ============ BUDGET ============ -->
     <section class="vue" id="v-budget" aria-labelledby="h-budget" hidden>
-      <header class="tete-page"><a class="retour-resume detail-seul" href="#budget">Résumé</a><h1 id="h-budget">Budget</h1><button type="button" class="bouton-modifier" data-feuille="menage">Famille</button></header>
+      <header class="tete-page"><a class="retour-resume detail-seul" href="#budget">Résumé</a><h1 id="h-budget">Budget</h1><button type="button" class="bouton-modifier bouton-reglages" data-feuille="menage" aria-label="Personnaliser vos données : famille" title="Personnaliser vos données"><span class="cache-visuel">Personnaliser</span></button></header>
       <nav class="onglets onglets-section" aria-label="Finances"><a href="#budget" data-section="budget">Budget</a><a href="#avenir" data-section="avenir">Patrimoine</a><a href="#impot" data-section="impot">Impôt</a></nav>
       <div class="segment parcours" id="bu-parcours"></div>
       <div class="segment detail-seul" id="bu-vue"></div>
@@ -425,7 +425,7 @@
 
     <!-- ============ AVENIR : ÉPARGNE ET VALEUR NETTE ============ -->
     <section class="vue" id="v-avenir" aria-labelledby="h-avenir" hidden>
-      <header class="tete-page"><a class="retour-resume detail-seul" href="#avenir">Résumé</a><h1 id="h-avenir">Patrimoine</h1><button type="button" class="bouton-modifier" data-feuille="epargne">Modifier</button></header>
+      <header class="tete-page"><a class="retour-resume detail-seul" href="#avenir">Résumé</a><h1 id="h-avenir">Patrimoine</h1><button type="button" class="bouton-modifier bouton-reglages" data-feuille="epargne" aria-label="Personnaliser vos données : épargne et placements" title="Personnaliser vos données"><span class="cache-visuel">Personnaliser</span></button></header>
       <nav class="onglets onglets-section" aria-label="Finances"><a href="#budget" data-section="budget">Budget</a><a href="#avenir" data-section="avenir">Patrimoine</a><a href="#impot" data-section="impot">Impôt</a></nav>
       <div class="segment detail-seul" id="vn-scenario"></div>
       <p class="aide hyp-ligne detail-seul" id="vn-hyp"></p>
