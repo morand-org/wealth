@@ -54,13 +54,21 @@ chacune, alignées et de même hauteur sur ordinateur.
   mois, les heures, les visites et les patients inscrits ; d'où vient le
   revenu ; ce que rapporte une demi-journée ou un patient de plus. En
   résidence : le net par mois, la paie, le niveau et le début de la
-  pratique. En haut, « Votre revenu · Impôt » passe d'une page à l'autre.
+  pratique.
 - **Comparer** : le mode le plus payant (le brut en gros, le net dessous) ;
   vos trois modes, avec « Et si… » ; la demi-journée de supervision ; un
   lien vers chaque onglet : Modes (« Rythme » en clinique, à l'acte
   seulement), Demi-journée, Actes et Offres. Toujours la pratique, même en
   vue résidence : la comparaison sert à la choisir.
-- **Impôt**, rangé avec le revenu (« Votre revenu · Impôt » ; la tuile de
+- **Codes** : le répertoire des actes, avec recherche par code ou par mot,
+  et les formulaires de la CNESST.
+- **Loi 2** : l'estimateur du mode composé, ce qui change (les règles
+  connues, en bref) et les documents (pages de la FMOQ et du gouvernement).
+- **Finances** : le budget, le patrimoine et l'impôt, avec « Budget ·
+  Patrimoine · Impôt » en haut de chacun. L'Aperçu s'ouvre par le logo ;
+  le bandeau « MORAND · MÉDECINE FAMILIALE », tout en haut, mène à
+  l'accueil de morand.org.
+- **Impôt**, dans Finances (la tuile de
   l'Aperçu et le revenu disponible du Budget y mènent aussi) : le net de
   l'année, ce qu'il faut mettre de côté chaque mois, l'impôt fédéral et
   celui du Québec ; chaque 100 $ gagnés ; le prochain paiement (en
@@ -335,8 +343,9 @@ côte à côte (ci-dessus). Les anciennes adresses `#revenu/actes` et
 (pourcentage de la facturation et montant fixe). Le mode de rémunération
 composé de la première ligne a fait l'objet d'une entente finale entre la
 FMOQ et le gouvernement (13 août 2026) ; ses montants restent à publier.
-L'onglet **Loi 2** de Comparer suit le document-cadre (FMOQ, « Modèle de
-rémunération composé en première ligne : résumé-synthèse », octobre 2026) :
+La page **Loi 2** suit le document-cadre (FMOQ, « Modèle de rémunération
+composé en première ligne », résumé-synthèse d'octobre 2026 et capsule
+explicative de 2026) :
 capitation 50 % (patients associés selon la vulnérabilité, l'âge et le sexe ;
 patients affiliés à tarif fixe), actes 30 % (un tarif par visite, sans égard
 à l'âge, à la vulnérabilité ni au nombre d'inscrits), composante horaire 20 %
@@ -347,9 +356,18 @@ enseignants en GMF-U et à 60 ans et plus ; activités spécifiques exclues. Les
 montants restent à fixer : le calcul suit vos hypothèses (capitation par
 patient associé, supplément par patient vulnérable, patients affiliés et leur
 tarif, tarif moyen d'une visite, taux horaire, heures de soins indirects,
-majoration des nouveaux médecins), toujours marquées « hypothèse » ; « Partir de mon revenu actuel » les calcule pour redonner le
-brut du mode actuel, réparti 50-30-20. Hypothèse de l'app : la capitation
-remplace les forfaits d'inscription, de volume et GMF ; le reste ne change pas.
+part de patients orphelins au sans rendez-vous), toujours marquées
+« hypothèse », et l'année de prise en charge au passage (majoration de 100 %
+de la capitation sur 500 patients associés la 1re année, 750 la 2e).
+« Partir de mon revenu actuel » les calcule pour redonner le brut du mode
+actuel, réparti 50-30-20, la capitation répartie selon l'exemple de table
+actuarielle de la capsule (non officiel : un patient vulnérable 1,7 à 2,5
+fois un non vulnérable selon son groupe, un affilié aux deux tiers).
+Payés à 100 % hors du modèle, comme aujourd'hui : les visites de patients
+orphelins et l'enseignement (EP 42). Les trois composantes suivent la
+majoration du territoire (annexes XII et XII-A) et échappent aux plafonds
+trimestriels. Hypothèse de l'app : la capitation remplace les forfaits
+d'inscription, de volume et GMF ; le reste ne change pas.
 
 À la publication des montants : remplir `Calc.COMPOSE.officiel` dans
 `js/calc.js` (montants, date, source) et ajuster `revenuCompose` aux règles

@@ -1749,18 +1749,18 @@ window.Verrou.quandOuvert(function () {
     document.getElementById("rv-dj-conclusion").textContent = dj.patients + dj.formulaires === 0 && !(dj.heures > 0) ? "Inscrivez les actes de votre demi-journée."
       : `${NOMS_MODE_ACTES[meilleur]} rapporte le plus pour cette demi-journée : ${autres.join(", ")}.${dj.formulaires > 0 ? ` Les formulaires de la CNESST (${$2(dj.formulaires)}) sont payés à 100 % dans les trois modes.` : ""}`;
 
-    // 4. Formulaires de la CNESST.
+    // Carte repliée : sa conclusion en une ligne.
+    const suivi = actes.find(a => a.cle === "suivi");
+    document.getElementById("rv-actes-resume").textContent = `Un suivi : ${$2(suivi.acte)} à l'acte, ${$2(suivi.mixte)} au mixte`;
+    // Supervision : son onglet, pour toute pratique (hors GMF-U, pour préparer une demi-journée d'enseignement).
+    document.getElementById("rv-carte-supervision").hidden = false;
+  }
+  // Formulaires de la CNESST (page Codes, avec le répertoire des actes).
+  function rendreCnesst() {
     lignes(document.getElementById("rv-cnesst"), ["Formulaire", "Tarif"], C.CNESST.map(f => ({ cellules: [`${f.nom} · ${f.code}`, $2(f.tarif)] })));
     document.getElementById("rv-cnesst-note").textContent = "Annexe XIII de l'Entente, en vigueur depuis le 1er avril 2025 (manuel de la RAMQ consulté le 25 octobre 2026). "
       + "Payés à 100 % du tarif dans tous les modes : à l'acte, au mixte (annexe XXIII, par. 2.11) et au taux horaire, à l'acte pour ces services sans facturer d'heures pour ce temps. "
-      + "L'examen se facture à part, sauf le rapport d'évaluation médicale (09944). Sans majoration selon le territoire.";
-
-    // Cartes repliées : leur conclusion en une ligne.
-    const suivi = actes.find(a => a.cle === "suivi");
-    document.getElementById("rv-actes-resume").textContent = `Un suivi : ${$2(suivi.acte)} à l'acte, ${$2(suivi.mixte)} au mixte`;
     document.getElementById("rv-cnesst-resume").textContent = `${nb(C.CNESST.length, 0)} formulaires, payés à 100 % dans tous les modes`;
-    // Supervision : son onglet, pour toute pratique (hors GMF-U, pour préparer une demi-journée d'enseignement).
-    document.getElementById("rv-carte-supervision").hidden = false;
   }
   // Quand un mode de rémunération devient plus payant qu'un autre, selon les tarifs de la personne.
   function rendreSeuils(R) {
@@ -1996,93 +1996,192 @@ window.Verrou.quandOuvert(function () {
     rendreSeuils(R);
     rendreActes(R);
     rendreOffres(R);
-    rendreLoi2(R);
   }
   /* Loi 2 : le mode composé en première ligne (capitation, actes, composante horaire), selon le document-cadre de la FMOQ
-     (résumé-synthèse d'octobre 2026). Ses montants ne sont pas fixés : le calcul suit les hypothèses de la personne, toujours
-     marquées ; « Partir de mon revenu actuel » les calcule pour redonner le brut du mode actuel, réparti 50-30-20. Dès que
-     Calc.COMPOSE.officiel est rempli, ses montants priment. */
-  const LOI2_VIDE = { capitation: null, suppVulnerable: null, affilies: null, capitationAffilie: null, tarifVisite: null, tauxHoraire: null, heuresIndirectes: null, majorationNouveau: null };
+     (résumé-synthèse d'octobre 2026) et sa capsule explicative (2026). Ses montants ne sont pas fixés : l'estimateur suit
+     les hypothèses de la personne, toujours marquées ; « Partir de mon revenu actuel » les calcule pour redonner le brut du
+     mode actuel, réparti 50-30-20. Dès que Calc.COMPOSE.officiel est rempli, ses montants priment.
+     Page à trois sous-onglets : Estimateur · Ce qui change · Documents. */
+  const LOI2_VIDE = { capitation: null, suppVulnerable: null, affilies: null, capitationAffilie: null, tarifVisite: null, tauxHoraire: null, heuresIndirectes: null, partOrphelins: null, anneePEC: null };
+  // Entrée en vigueur estimée : environ 18 mois à compter de juin 2026 (résumé-synthèse), date à confirmer par la RAMQ.
+  const LOI2_ENTREE = "2027-12";
   function hypothesesLoi2() {
     const o = C.COMPOSE.officiel, h = { ...LOI2_VIDE, ...(S.loi2 || {}) };
     if (o) return { ...h, ...o, officiel: true };
     return { ...h, officiel: false };
   }
-  const optionsLoi2 = () => ({ semaines: +S.revenu.semaines || 0, nouveau: S.revenu.annee === "premiere" });
+  /* Année de prise en charge au passage : celle choisie ; sinon, selon le début de la pratique (résidence), ou la première
+     année calculée ; sinon plus tard (sans majoration). */
+  function anneePECLoi2(R) {
+    const choisi = +(S.loi2 || {}).anneePEC;
+    if (choisi >= 1 && choisi <= 3) return { an: choisi, choisi: true };
+    if (R.residenceActive) { const m = moisEntre(R.debutPratique, LOI2_ENTREE); return { an: m < 12 ? 1 : m < 24 ? 2 : 3, choisi: false }; }
+    return { an: S.revenu.annee === "premiere" ? 1 : 3, choisi: false };
+  }
+  const optionsLoi2 = R => ({ semaines: +S.revenu.semaines || 0, anneePEC: anneePECLoi2(R).an });
+  function rendrePageLoi2(R) {
+    const cle = sousChoisi("loi2");
+    if (cle === "estimateur") rendreLoi2(R);
+    else if (cle === "regles") rendreReglesLoi2();
+    else rendreDocumentsLoi2();
+  }
   function rendreLoi2(R) {
-    const carte = document.getElementById("cp-loi2"), P = C.COMPOSE.parts, o = C.COMPOSE.officiel;
+    const carte = document.getElementById("cp-loi2"), P = C.COMPOSE.parts, o = C.COMPOSE.officiel, M = C.COMPOSE.majorationNouveau;
     if (!carte.dataset.monte) {
       carte.dataset.monte = "1";
-      const tete = el("div", "carte-tete"); tete.appendChild(el("h2", null, "Le mode composé (Loi 2)"));
+      const tete = el("div", "carte-tete"); tete.appendChild(el("h2", null, "Votre revenu au mode composé"));
       const statut = el("p", "aide"); statut.id = "loi2-statut";
       const parts = el("div"); parts.id = "loi2-parts";
-      const connu = el("details", "plus-loin"); connu.id = "loi2-connu";
-      connu.appendChild(el("summary", null, "Ce que prévoit le document-cadre"));
-      connu.appendChild(rangees(el("div"), [
-        { titre: "Patients associés et affiliés", sous: "L'association remplace l'inscription individuelle ; l'affiliation, l'inscription collective. Au départ, vos inscrits seront associés à vous, les inscrits collectifs affiliés à votre milieu." },
-        { titre: "Capitation", sous: "Par patient associé, selon la vulnérabilité (4 groupes), l'âge et le sexe, plus un supplément pour certaines conditions de santé mentale ou de déficience intellectuelle ; aux deux semaines. Patient affilié : un tarif fixe, versé chaque mois au groupe." },
-        { titre: "Actes", sous: "Visites en personne ou en téléconsultation, complexes, à domicile, de prise en charge, en groupe, et certains avis. Le tarif ne dépend plus de l'âge, de la vulnérabilité ni du nombre d'inscrits." },
-        { titre: "Composante horaire", sous: "Soins directs et indirects (coordination, résultats, documentation, renouvellements, échanges avec les proches), au plus 14 h par jour ; une banque d'heures administratives selon la patientèle du milieu." },
-        { titre: "Transition", sous: "Garantie de revenu de 12 mois : la différence avec l'ancien mode, à prestation égale. Nouveaux médecins : capitation majorée sur les 500 premiers patients la 1re année, les 750 premiers la 2e. Exclusion au choix à 60 ans et plus." },
-        { titre: "Exclusions", sous: "Médecin enseignant en GMF-U : exclusion au choix. Aide médicale à mourir, constat de décès, perte d'autonomie, musculosquelettique, IVG, psychothérapie, CNESST, entre autres : payés comme aujourd'hui." },
-        { titre: "Entrée en vigueur", sous: "D'ici environ 18 mois à compter de juin 2026, selon les délais de la RAMQ. Les indicateurs d'accès et de continuité n'auront pas d'effet sur la rémunération." },
-      ]));
+      const vise = el("p", "aide"); vise.id = "loi2-vise";
+      const titreA = el("h3", "sous-titre", "Au passage au mode composé, vous serez");
+      const annee = el("div", "segment petit"); annee.id = "loi2-annee";
+      const anneeAide = el("p", "aide"); anneeAide.id = "loi2-annee-aide";
       const titreH = el("h3", "sous-titre", "Vos hypothèses"); titreH.id = "loi2-titre-hyp";
       const champs = el("div", "champs-rapides"); champs.id = "loi2-champs";
       const a = el("div", "actions"), cal = el("button", "bouton secondaire", "Partir de mon revenu actuel"); cal.type = "button"; cal.id = "loi2-calibrer";
       cal.addEventListener("click", () => {
-        const h = S.loi2 || {}, op = { ...optionsLoi2(), heuresIndirectes: +h.heuresIndirectes || 0 };
+        const h = S.loi2 || {}, r = S.revenu, garde = { anneePEC: h.anneePEC ?? null };
+        const op = { ...optionsLoi2(R), heuresIndirectes: +h.heuresIndirectes || 0, affilies: +h.affilies || 0, partOrphelins: h.partOrphelins,
+          groupes: { g2: (+r.partGroupe2 || 0) / 100, g34: (+r.partGroupe34 || 0) / 100 } };
         const c = C.calibrerCompose(R.rev, R.rev[R.mode].total, op), r2 = x => Math.round(x * 100) / 100;
-        S.loi2 = { ...LOI2_VIDE, ...Object.fromEntries(Object.entries(c).map(([k, v]) => [k, r2(v)])) }; S.meta.exemple = false; sauver(); tout();
+        S.loi2 = { ...LOI2_VIDE, ...Object.fromEntries(Object.entries(c).map(([k, v]) => [k, r2(v)])), ...garde }; S.meta.exemple = false; sauver(); tout();
         toast("Hypothèses calculées : le brut de votre mode actuel, réparti 50-30-20.");
       });
       const eff = el("button", "bouton secondaire", "Effacer mes hypothèses"); eff.type = "button"; eff.id = "loi2-effacer";
-      eff.addEventListener("click", () => { S.loi2 = { ...LOI2_VIDE }; sauver(); tout(); });
+      eff.addEventListener("click", () => { S.loi2 = { ...LOI2_VIDE, anneePEC: (S.loi2 || {}).anneePEC ?? null }; sauver(); tout(); });
       a.append(cal, eff);
       const res = el("div"); res.id = "loi2-resultat";
       const note = el("p", "aide"); note.id = "loi2-note";
-      carte.append(tete, statut, parts, connu, titreH, champs, a, res, note);
+      carte.append(tete, statut, parts, vise, titreA, annee, anneeAide, titreH, champs, a, res, note);
     }
     document.getElementById("loi2-statut").textContent = o
       ? `Montants officiels du ${dateLongue(o.date)} (${o.source}).`
-      : "Son architecture est fixée (document-cadre FMOQ-gouvernement, résumé-synthèse d'octobre 2026), mais pas ses montants. En attendant, le calcul suit vos hypothèses : inscrivez-les, ou partez de votre revenu actuel. Dès leur publication, l'app prendra les montants officiels.";
+      : "L'architecture est fixée (document-cadre de la FMOQ et du gouvernement), pas les montants. En attendant, le calcul suit vos hypothèses : inscrivez-les, ou partez de votre revenu actuel. Dès leur publication, l'app prendra les montants officiels.";
     rangees("loi2-parts", [
-      { titre: "Capitation", sous: "Par patient associé ou affilié, chaque année", valeur: pct(P.capitation, 0) },
+      { titre: "Capitation", sous: "Par patient associé ou affilié, selon son profil, chaque année", valeur: pct(P.capitation, 0) },
       { titre: "Actes", sous: "Chaque visite, à un tarif unique", valeur: pct(P.actes, 0) },
       { titre: "Composante horaire", sous: "Soins directs et indirects", valeur: pct(P.horaire, 0) },
     ]);
+    // Êtes-vous visé ? Les pratiques exclues et les exclusions au choix (capsule de la FMOQ).
+    const milieu = S.revenu.milieu;
+    document.getElementById("loi2-vise").textContent = "Visé : toute pratique de prise en charge avec inscriptions, en clinique, en CLSC ou en GMF-U ; vos activités en établissement restent payées comme aujourd'hui."
+      + (milieu === "gmfu" ? " Médecin enseignant en GMF-U : vous pourrez garder votre mode actuel (mixte, taux horaire, actes)." : "")
+      + " À 60 ans ou plus à l'entrée en vigueur, vous pourrez aussi le garder.";
+    const pec = anneePECLoi2(R);
+    segment("loi2-annee", [["1", "En 1re année"], ["2", "En 2e année"], ["3", "Plus tard"]], String(pec.an), v => {
+      S.loi2 = { ...LOI2_VIDE, ...(S.loi2 || {}), anneePEC: +v }; sauver(); tout();
+    }, "Année de prise en charge au passage au mode composé");
+    document.getElementById("loi2-annee-aide").textContent = (pec.an === 1 ? `Capitation majorée de ${nb(M.pct, 0)} % sur vos ${nb(M.an1, 0)} premiers patients associés pendant 12 mois.`
+      : pec.an === 2 ? `Capitation majorée de ${nb(M.pct, 0)} % sur vos ${nb(M.an2, 0)} premiers patients associés pendant 12 mois.`
+        : "Après vos deux premières années de prise en charge : sans majoration.")
+      + (pec.choisi ? "" : ` Estimé selon votre début de pratique et une entrée en vigueur vers ${moisLong(LOI2_ENTREE)}.`);
     document.getElementById("loi2-titre-hyp").hidden = !!o;
     document.getElementById("loi2-champs").hidden = !!o;
     document.getElementById("loi2-calibrer").closest(".actions").hidden = !!o;
+    const avecSrv = (+S.revenu.demiJourneesSRV || 0) * (+S.revenu.patientsSRV || 0) > 0;
     if (!o) champsRapides("loi2-champs", [
-      { p: "loi2.capitation", l: "Capitation par patient associé", u: "$/an", s: 1 },
+      { p: "loi2.capitation", l: "Capitation par patient associé", u: "$/an", s: 1, h: "Patient non vulnérable." },
       { p: "loi2.suppVulnerable", l: "De plus par patient vulnérable", u: "$/an", s: 1 },
       { p: "loi2.tarifVisite", l: "Tarif moyen d'une visite", u: "$", s: 0.5 },
       { p: "loi2.tauxHoraire", l: "Taux horaire", u: "$/h", s: 1 },
       { p: "loi2.heuresIndirectes", l: "Heures de soins indirects par semaine", u: "h/sem.", s: 0.5, h: "Coordination, résultats, documentation, renouvellements, appels aux proches : en dehors de vos demi-journées." },
       { p: "loi2.affilies", l: "Patients affiliés qui vous reviennent", u: "pat.", s: 10, h: "Votre part des inscrits collectifs de votre milieu, payée à un tarif fixe." },
       { p: "loi2.capitationAffilie", l: "Capitation par patient affilié", u: "$/an", s: 1 },
-      { p: "loi2.majorationNouveau", l: "Majoration de la capitation, nouveau médecin", u: "%", s: 1, h: "Sur vos 500 premiers patients, pendant votre première année de prise en charge (« Année calculée » : première année)." },
-    ]);
-    const h = hypothesesLoi2(), op = optionsLoi2(), x = C.revenuCompose(R.rev, h, op), z = document.getElementById("loi2-resultat"); z.textContent = "";
+      avecSrv && { p: "loi2.partOrphelins", l: "Sans rendez-vous : patients orphelins", u: "%", s: 5, h: "Leurs visites restent payées à 100 % du tarif actuel. Les autres passent au tarif unique." },
+    ].filter(Boolean), d => d.p === "loi2.partOrphelins" && (S.loi2 || {}).partOrphelins == null ? 100 : lire(d.p));
+    const h = hypothesesLoi2(), x = C.revenuCompose(R.rev, h, optionsLoi2(R)), z = document.getElementById("loi2-resultat"); z.textContent = "";
     const marque = h.officiel ? "officiel" : "hypothèse", actuel = R.rev[R.mode].total;
     if (x.premiereLigne <= 0) z.appendChild(el("p", "aide", "Inscrivez vos hypothèses, ou partez de votre revenu actuel, pour voir votre revenu au mode composé."));
     else {
-      const garantie = C.garantieCompose(x.total, actuel);
+      const garantie = C.garantieCompose(x.total, actuel), majT = x.maj > 1.0001 ? ` · majoré de ${nb((x.maj - 1) * 100, 1)} % (territoire)` : "";
       z.appendChild(el("h3", "sous-titre", "Votre année au mode composé"));
       z.appendChild(rangees(el("div"), [
-        { titre: "Capitation", sous: `${nb(x.associes, 0)} patients associés en moyenne${+h.suppVulnerable > 0 ? `, dont ${nb(x.vulnerables, 0)} vulnérables` : ""}${x.affilies > 0 ? ` ; ${nb(x.affilies, 0)} affiliés` : ""}${x.majoration > 0 ? ` ; majoration ${$(x.majoration)}` : ""} · ${pct(x.parts.capitation, 0)}`, valeur: $(x.capitation), valeurSous: marque },
-        { titre: "Actes", sous: `${nb(x.visites, 0)} visites à ${$2(+h.tarifVisite || 0)} · ${pct(x.parts.actes, 0)}`, valeur: $(x.actes), valeurSous: marque },
+        { titre: "Capitation", sous: `${nb(x.associes, 0)} patients associés en moyenne${+h.suppVulnerable > 0 ? `, dont ${nb(x.vulnerables, 0)} vulnérables` : ""}${x.affilies > 0 ? ` ; ${nb(x.affilies, 0)} affiliés` : ""} · ${pct(x.parts.capitation, 0)}${majT}`, valeur: $(x.capitation - x.majoration), valeurSous: marque },
+        x.majoration > 0.5 && { titre: "Majoration, début de pratique", sous: `${nb(M.pct, 0)} % de la capitation de ${nb(x.majores, 0)} patients associés (${x.anneePEC === 1 ? "1re" : "2e"} année de prise en charge)`, valeur: $(x.majoration), valeurSous: marque },
+        { titre: "Actes", sous: `${nb(x.visites, 0)} visites de vos patients à ${$2(+h.tarifVisite || 0)} · ${pct(x.parts.actes, 0)}`, valeur: $(x.actes), valeurSous: marque },
         { titre: "Composante horaire", sous: `${nb(x.heuresClinique, 0)} h en clinique${x.indirectes > 0 ? ` et ${nb(x.indirectes, 0)} h de soins indirects` : ""} à ${$2(+h.tauxHoraire || 0)} · ${pct(x.parts.horaire, 0)}`, valeur: $(x.horaire), valeurSous: marque },
-        x.restent > 0.5 && { titre: "Le reste, inchangé", sous: "Activités en établissement, demi-per diem, compensation des frais de cabinet, autres revenus", valeur: $(x.restent) },
+        x.orphelins > 0.5 && { titre: "Patients orphelins, à 100 %", sous: `${nb(x.srvOrphelins, 0)} visites sans rendez-vous, au tarif actuel`, valeur: $(x.orphelins) },
+        x.enseignement > 0.5 && { titre: "Enseignement, à 100 %", sous: "Supervision des apprenants (EP 42), au tarif actuel", valeur: $(x.enseignement) },
+        x.inchanges > 0.5 && { titre: "Le reste, inchangé", sous: "Activités en établissement, demi-per diem, compensation des frais de cabinet, autres revenus", valeur: $(x.inchanges) },
         { titre: "Brut de l'année", cls: "total", valeur: $(x.total), valeurSous: marque },
         garantie > 0.5 && { titre: "Garantie de revenu, la première année", sous: `Le mode composé paierait moins ${AU_MODE[R.mode]} : la différence vous serait versée pendant 12 mois`, valeur: signe(garantie) },
         ...R.modes.map(m => ({ titre: `Par rapport ${AU_MODE[m]}`, sous: `${$(R.rev[m].total)} brut`, valeur: signe(x.total - R.rev[m].total) })),
       ]));
     }
-    document.getElementById("loi2-note").textContent = `Parts de l'entente : capitation ${pct(P.capitation, 0)}, actes ${pct(P.actes, 0)}, composante horaire ${pct(P.horaire, 0)}. `
-      + "Hypothèses de l'app, en attendant les règles : la capitation remplace les forfaits d'inscription, de volume et GMF ; la même capitation pour chaque patient associé (l'âge, le sexe et les quatre groupes de vulnérabilité viendront avec les montants) ; le reste ne change pas. "
-      + "Sources : FMOQ, « Modèle de rémunération composé en première ligne : résumé-synthèse », octobre 2026 ; entente de principe du 10 décembre 2025. Montants avant les frais et l'impôt.";
+    document.getElementById("loi2-note").textContent = `Parts de l'entente : capitation ${pct(P.capitation, 0)}, actes ${pct(P.actes, 0)}, composante horaire ${pct(P.horaire, 0)} ; sans plafond trimestriel, avec la majoration du territoire (annexes XII et XII-A). `
+      + "Hypothèses de l'app, en attendant les règles : la capitation remplace les forfaits d'inscription, de volume et GMF ; « Partir de mon revenu actuel » répartit la capitation selon l'exemple de table actuarielle de la FMOQ (un patient vulnérable 1,7 à 2,5 fois un non vulnérable selon son groupe, un affilié aux deux tiers), qui n'est pas un barème ; les visites des apprenants sont remplacées par la supervision à 100 % ; le reste ne change pas. "
+      + "Sources : FMOQ, « Modèle de rémunération composé en première ligne », résumé-synthèse (octobre 2026) et capsule explicative (2026) ; entente de principe du 10 décembre 2025. Montants avant les frais et l'impôt.";
+  }
+  // Ce qui change : les règles connues, en bref, avec leur source. Construit une fois (le texte ne dépend pas du plan).
+  function rendreReglesLoi2() {
+    const carte = document.getElementById("l2-regles");
+    if (carte.dataset.monte) return;
+    carte.dataset.monte = "1";
+    const M = C.COMPOSE.majorationNouveau, X = C.COMPOSE.ponderationExemple, f = x => nb(x, 2);
+    const tete = el("div", "carte-tete"); tete.appendChild(el("h2", null, "Ce qui change"));
+    const intro = el("p", "aide", "Les règles connues du mode composé en première ligne, en bref. Les montants (« quantums ») restent à déterminer.");
+    const groupe = (titre, liste) => { const s = el("div", "loi2-groupe"); s.appendChild(el("h3", "sous-titre", titre)); s.appendChild(rangees(el("div"), liste)); return s; };
+    carte.append(tete, intro,
+      groupe("Trois composantes qui s'additionnent", [
+        { titre: "Capitation, 50 %", sous: "La responsabilité du suivi et le profil de la patientèle, sans égard au nombre de visites." },
+        { titre: "Visites, 30 %", sous: "Un tarif par type de visite : en personne ou en téléconsultation (même tarif), complexe, à domicile, de prise en charge, en groupe, et certains avis. De 100 codes à 10 ou 12 ; le tarif ne dépend plus de l'âge, de la vulnérabilité ni du nombre d'inscrits." },
+        { titre: "Composante horaire, 20 %", sous: "Toutes les heures de soins directs et indirects (résultats, dossiers, coordination, ordonnances, échanges avec les proches), jusqu'à 14 h par jour ; pas les services non assurés. Une banque d'heures administratives par milieu, répartie par le médecin responsable." },
+      ]),
+      groupe("Vos patients", [
+        { titre: "Associés et affiliés", sous: "L'inscription individuelle devient l'association à un médecin ; l'inscription collective, l'affiliation à un milieu de soins. Au départ, vos inscrits seront associés à vous, les inscrits collectifs affiliés à votre milieu." },
+        { titre: "Statut actif", sous: "Maintenu sans obligation de visite et sans limite de temps." },
+        { titre: "Pondération", sous: `Selon l'âge, le sexe et 4 groupes de vulnérabilité (codes de l'EP 40), plus un supplément pour la santé mentale (catégorie A) ou la déficience intellectuelle (catégorie N). Dans l'exemple de table actuarielle présenté par la FMOQ (non officiel), un patient vulnérable vaut environ ${f(X.groupe1)} (groupe 1) à ${f(X.groupe34)} fois (groupes 3 et 4) un associé non vulnérable du même âge, et un affilié, environ ${f(X.affilie)} fois.` },
+        { titre: "Nouveau code de vulnérabilité", sous: "Inscrit dès la réception d'un rapport qui confirme le diagnostic (biopsie, consultation), sans visite." },
+        { titre: "Versements", sous: "Associés : aux deux semaines. Affiliés : chaque mois, au groupe, réparti par le médecin responsable." },
+      ]),
+      groupe("Payés à 100 %, comme aujourd'hui", [
+        { titre: "Patients orphelins", sous: "Leurs visites restent payées au plein tarif." },
+        { titre: "Actes diagnostiques et thérapeutiques", sous: "Tarification intégrale ; bonifications à déterminer." },
+        { titre: "Enseignement (EP 42)", sous: "Per diem de supervision, activités de supervision et activités académiques." },
+        { titre: "Formulaires", sous: "CNESST, sécurité du revenu, constats de décès, entre autres." },
+        { titre: "Suppléments", sous: "Grossesse (1re visite, par un seul médecin sauf transfert pour l'accouchement, et visites suivantes) ; sans rendez-vous auprès de patients d'un autre milieu." },
+      ]),
+      groupe("Début de pratique et transition", [
+        { titre: "Majoration de la capitation", sous: `${nb(M.pct, 0)} % sur les ${nb(M.an1, 0)} premiers patients associés pendant les 12 premiers mois de prise en charge, puis sur les ${nb(M.an2, 0)} premiers pendant les 12 mois suivants.` },
+        { titre: "Garantie de revenu", sous: "Pendant les 12 premiers mois : la différence si le mode composé paie moins que l'ancien, à prestation égale." },
+        { titre: "Plafonds et régions", sous: "Les trois composantes échappent aux plafonds trimestriels ; la majoration selon le territoire (annexes XII et XII-A) s'y applique." },
+        { titre: "Absence", sous: "Congé de maternité, d'adoption ou d'invalidité de plus de 13 semaines : la capitation s'arrête. Elle va au médecin remplaçant désigné, sinon au groupe." },
+        { titre: "Entrée en vigueur", sous: "Partout au Québec en même temps, vers la fin de 2027 (environ 18 mois à compter de juin 2026) ; date à fixer avec la RAMQ." },
+        { titre: "Hausses", sous: "Les sommes négociées et des hausses paramétriques s'appliquent en même temps, dans tous les secteurs." },
+      ]),
+      groupe("Qui n'est pas visé", [
+        { titre: "Exclus", sous: "Honoraires fixes et mixte à honoraires fixes ; régions isolées (per diem 17-18, dispensaires 9-10) ; SAD et SIAD, soins palliatifs, toxicomanie, itinérance, pédiatrie et périnatalité sociales, entre autres." },
+        { titre: "Actes exclus", sous: "Aide médicale à mourir, interruption de grossesse, vasectomie, musculosquelettique, psychothérapie, constat médico-légal, entre autres." },
+        { titre: "Au choix", sous: "60 ans ou plus à l'entrée en vigueur ; médecin enseignant en GMF-U (mixte, taux horaire, actes extra-établissement)." },
+      ]),
+      groupe("Encore à préciser", [
+        { titre: "Montants", sous: "Les tarifs de chaque composante. La FMOQ offrira un simulateur quand ils seront connus ; l'estimateur de l'app les prendra aussi." },
+        { titre: "Modalités", sous: "Formulaire d'association, délais de transmission à la RAMQ, adaptations pour les régions et la pratique polyvalente, révision des codes de vulnérabilité." },
+        { titre: "Comité paritaire", sous: "Pourra faire des recommandations, jusqu'à récupérer des forfaits de capitation, en cas de dérive dans la prise en charge d'un milieu." },
+      ]),
+      el("p", "aide", "Sources : FMOQ, « Modèle de rémunération composé en première ligne », résumé-synthèse (octobre 2026) et capsule explicative (2026) ; entente de principe du 10 décembre 2025."));
+  }
+  // Documents : les pages publiques du gouvernement et celles de la FMOQ (réservées aux membres). Aucune copie ici.
+  const DOCUMENTS_LOI2 = [
+    { titre: "Capsule explicative du modèle de rémunération composé", sous: "FMOQ, 2026 · vidéo d'environ 40 minutes · réservé aux membres", url: "https://www.fmoq.org/affaires-federatives/modele-de-remuneration-compose-en-premiere-ligne/capsule-explicative-modele-de-remuneration-compose-en-premiere-ligne/" },
+    { titre: "Modèle de rémunération composé : les prochaines étapes", sous: "FMOQ · résumé-synthèse (octobre 2026) et inscription aux webinaires des 24 et 25 novembre 2026 · réservé aux membres", url: "https://www.fmoq.org/affaires-federatives/modele-de-remuneration-compose-les-prochaines-etapes/" },
+    { titre: "Infolettre FMOQ du 11 novembre 2026", sous: "FMOQ · la capsule et les webinaires de questions et réponses", url: "https://www.fmoq.org/infolettres/fmoq/2026/infolettre-11-novembre-2026/" },
+    { titre: "Pour les patients : une entente de principe avec la FMOQ", sous: "Gouvernement du Québec, 11 décembre 2025", url: "https://www.quebec.ca/nouvelles/actualites/details/pour-les-patients-une-entente-de-principe-avec-la-fmoq-67647" },
+    { titre: "Une entente gagnante pour améliorer l'accès aux soins de santé", sous: "Gouvernement du Québec, 19 décembre 2025", url: "https://www.quebec.ca/nouvelles/actualites/details/une-entente-gagnante-pour-ameliorer-lacces-aux-soins-de-sante-67854" },
+  ];
+  function rendreDocumentsLoi2() {
+    const carte = document.getElementById("l2-documents");
+    if (carte.dataset.monte) return;
+    carte.dataset.monte = "1";
+    const tete = el("div", "carte-tete"); tete.appendChild(el("h2", null, "Documents"));
+    const ul = el("ul", "liens-comparer");
+    for (const d of DOCUMENTS_LOI2) {
+      const li = el("li"), a = el("a", "lien-comparer"), t = el("span", "lc-texte");
+      a.href = d.url; a.target = "_blank"; a.rel = "noopener noreferrer";
+      t.append(el("strong", null, d.titre), el("span", null, d.sous));
+      a.append(t, el("span", "visuellement-cache", " (nouvel onglet)"), icone("chevron", "chevron")); li.appendChild(a); ul.appendChild(li);
+    }
+    carte.append(tete, el("p", "aide", "Les pages de la FMOQ demandent une connexion de membre. Liens vérifiés le 11 novembre 2026."), ul);
   }
   // En tête : le mode le plus payant, son brut en gros et son net dessous. Avec un seul mode, rien : la supervision suit.
   function heroComparer(R) {
@@ -2104,7 +2203,7 @@ window.Verrou.quandOuvert(function () {
     const liens = [
       ["modes", "barres", libelleModes(), R.plusieursModes ? `${R.modes.length === 3 ? "Les trois modes" : "Vos modes"} côte à côte, les seuils, et selon vos demi-journées` : "Votre revenu selon vos demi-journées et vos patients"],
       ["demijournee", "horloge", "Demi-journée", "Intervention de supervision ou visites ; ma demi-journée, acte par acte"],
-      ["actes", "loupe", "Actes", `Le répertoire, ${nb(window.Repertoire.ACTES.length, 0)} actes avec recherche ; les formulaires de la CNESST`],
+      ["actes", "loupe", "Actes", "Ce que rapporte chaque acte selon le mode, et à l'heure selon sa durée"],
       ["offres", "offres", "Offres", S.revenu.offreB ? "Votre plan à côté de l'autre offre" : "Votre plan à côté d'une autre offre"],
     ];
     const ul = el("ul", "liens-comparer");
@@ -3049,10 +3148,11 @@ window.Verrou.quandOuvert(function () {
     document.documentElement.classList.toggle("donnees-exemple", !!S.meta.exemple);   // un rappel « Exemple » près de chaque titre
     document.getElementById("pied-parametres").textContent = `paramètres fiscaux ${R.parametres.annee}${R.parametres.provisoire ? " (provisoires)" : ""}`;
     appliquerVue(R);
-    appliquerSous("comparer"); appliquerSous("budget"); appliquerSous("avenir");   // avant les graphiques : ils prennent la largeur des cartes visibles
+    appliquerSous("comparer"); appliquerSous("budget"); appliquerSous("avenir"); appliquerSous("loi2");   // avant les graphiques : ils prennent la largeur des cartes visibles
     // Seule la page affichée se redessine (lot 10 de l'audit) : ouvrir une page appelle tout() de nouveau.
     const visible = (document.querySelector(".vue:not([hidden])") || {}).id || "v-apercu";
     ({ "v-apercu": () => rendreApercu(R), "v-revenu": () => rendreRevenu(R), "v-comparer": () => rendreComparer(R), "v-impot": () => rendreImpot(R), "v-budget": () => rendreBudget(R),
+      "v-codes": () => rendreCnesst(), "v-loi2": () => rendrePageLoi2(R),
       "v-avenir": () => rendreAvenir(R), "v-donnees": () => rendreFiabilite() })[visible]?.();
     if (feuilleCourante && feuilleCourante.maj) feuilleCourante.maj();
     // Sigles de la RAMQ : définition au toucher, dans les pages et le panneau ouvert.
@@ -4222,14 +4322,17 @@ window.Verrou.quandOuvert(function () {
     annulerToast = null; boiteToast.hidden = true;
   });
 
-  /* Pages, avec la page ouverte dans l'adresse (#revenu, #impot…). L'impôt est rangé avec le revenu
-     (« Votre revenu · Impôt ») ; la supervision et les actes, autrefois sous Revenu, sont dans Comparer. */
+  /* Pages, avec la page ouverte dans l'adresse (#revenu, #impot…). La barre : Revenu, Comparer, Codes, Loi 2, Finances ;
+     l'Aperçu s'ouvre par le logo. Finances regroupe le budget, le patrimoine et l'impôt (« Budget · Patrimoine · Impôt »).
+     Le répertoire des actes et les formulaires de la CNESST sont dans Codes ; le mode composé, dans Loi 2. */
   const ALIAS = { epargne: "avenir", patrimoine: "avenir" };
-  const ANCIENNES = { "revenu/supervision": "comparer/demijournee", "revenu/actes": "comparer/actes" };
+  const ANCIENNES = { "revenu/supervision": "comparer/demijournee", "revenu/actes": "comparer/actes", "comparer/loi2": "loi2/estimateur" };
+  const FINANCES = ["budget", "avenir", "impot"], TOUJOURS_DETAIL = ["donnees", "codes", "loi2"];
   /* Sous-onglets de Comparer, du Budget et du Patrimoine : des pages plus courtes sur téléphone. Le choix est
      gardé sur cet appareil ; une adresse comme #budget/dettes ouvre directement un sous-onglet. */
   const SOUS_ONGLETS = {
-    comparer: [["modes", "Modes"], ["demijournee", "Demi-journée"], ["actes", "Actes"], ["offres", "Offres"], ["loi2", "Loi 2"]],
+    comparer: [["modes", "Modes"], ["demijournee", "Demi-journée"], ["actes", "Actes"], ["offres", "Offres"]],
+    loi2: [["estimateur", "Estimateur"], ["regles", "Ce qui change"], ["documents", "Documents"]],
     budget: [["mois", "Ce mois-ci"], ["annee", "L'année"], ["dettes", "Dettes"]],
     avenir: [["aujourdhui", "Aujourd'hui"], ["projection", "Projection"], ["placements", "Placements"], ["proches", "Proches"]],
   };
@@ -4249,7 +4352,7 @@ window.Verrou.quandOuvert(function () {
     return onglets.some(([k]) => k === v) ? v : onglets[0][0];
   }
   function garderSous(page, cle) { try { localStorage.setItem("wm.sous." + page, cle); } catch (e) { /* préférence non gardée */ } }
-  const BARRE_SOUS = { comparer: ["cp-onglets", "Comparaisons"], budget: ["bu-onglets", "Sections du budget"], avenir: ["pa-onglets", "Sections du patrimoine"] };
+  const BARRE_SOUS = { comparer: ["cp-onglets", "Comparaisons"], budget: ["bu-onglets", "Sections du budget"], avenir: ["pa-onglets", "Sections du patrimoine"], loi2: ["l2-onglets", "Sections de la Loi 2"] };
   function appliquerSous(page) {
     const onglets = ongletsDe(page), barre = document.getElementById(BARRE_SOUS[page][0]);
     if (onglets.length < 2) { barre.hidden = true; barre.textContent = ""; delete barre.dataset.cle; }
@@ -4274,14 +4377,14 @@ window.Verrou.quandOuvert(function () {
     const sousOnglet = !!(sous && onglets && onglets.some(([k]) => k === sous));
     if (sousOnglet) garderSous(nom, sous);
     if (!document.getElementById("v-" + nom)) nom = "apercu";
-    const detail = sous === "detail" || !!sousOnglet || nom === "donnees";
+    const detail = sous === "detail" || !!sousOnglet || TOUJOURS_DETAIL.includes(nom);
     document.getElementById("v-" + nom).classList.toggle("mode-detail", detail);
-    const adresse = "#" + nom + (detail && nom !== "donnees" ? "/" + (onglets ? sousChoisi(nom) : "detail") : "");
+    const adresse = "#" + nom + (detail && !["donnees", "codes"].includes(nom) ? "/" + (onglets ? sousChoisi(nom) : "detail") : "");
     // Téléphone : les boutons du haut suivent la page, à droite de son titre.
     document.querySelector(`#v-${nom} > .tete-page`).after(document.querySelector(".barre-outils"));
     document.getElementById("barre-pdf").hidden = nom !== "apercu";
-    // L'impôt est rangé avec le revenu : Revenu reste marqué dans la barre ; « Votre revenu · Impôt » marque la page ouverte.
-    const section = nom === "impot" ? "revenu" : nom;
+    // Budget, patrimoine et impôt : Finances reste marqué dans la barre ; « Budget · Patrimoine · Impôt » marque la page ouverte.
+    const section = FINANCES.includes(nom) ? "budget" : nom;
     document.querySelectorAll(".nav [data-onglet], .barre-outils [data-onglet]").forEach(a => { if (a.dataset.onglet === section) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
     document.querySelectorAll(".onglets-section a").forEach(a => { if (a.dataset.section === nom) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
     document.querySelectorAll(".vue").forEach(v => { v.hidden = v.id !== "v-" + nom; });

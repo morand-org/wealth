@@ -153,6 +153,9 @@ td, .chiffre, .hero-valeur, .tuile-valeur, .rangee-valeur { font-variant-numeric
 }
 .ouverture.joue { animation: ouverture-fin 0.4s ease 0.86s forwards; }
 .ouverture-sceau { width: min(56vw, 230px); height: min(56vw, 230px); }
+/* Avant que le script ne lance la séquence, le fond couvre la page mais aucun sceau ne s'affiche : sans cela, le premier
+   dessin restait figé un instant, puis disparaissait et revenait au début de l'animation. */
+.avec-ouverture .ouverture:not(.joue) .ouverture-sceau { visibility: hidden; }
 .ouverture.joue .ouverture-sceau { animation: ouverture-sceau 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
 @keyframes ouverture-fin { to { opacity: 0; visibility: hidden; } }
 @keyframes ouverture-sceau { from { opacity: 0; transform: scale(0.94); } }
@@ -175,6 +178,19 @@ td, .chiffre, .hero-valeur, .tuile-valeur, .rangee-valeur { font-variant-numeric
 .fichier-chiffre { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
 .fichier-chiffre[hidden] { display: none; }
 .fichier-chiffre > label { font-size: 0.92rem; }
+/* Bandeau du site Morand, tout en haut, comme sur la page d'accueil de morand.org : MORAND et MÉDECINE FAMILIALE,
+   sur un filet ; il mène à l'accueil du site. Le logo de Wealth Morand, dessous, mène à l'aperçu. */
+.bandeau-morand {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+  margin: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+  padding: max(12px, env(safe-area-inset-top)) 0 10px; border-bottom: 1px solid var(--encre);
+  color: var(--encre); text-decoration: none;
+}
+.bandeau-morand .bm-nom { font: 500 14px/1 var(--police-titre); letter-spacing: 0.32em; text-transform: uppercase; }
+.bandeau-morand .bm-rubrique { font: 500 10px/1 var(--police); letter-spacing: 0.24em; text-transform: uppercase; color: var(--marque); }
+.bandeau-morand:focus-visible { outline: 2px solid var(--marque); outline-offset: 4px; }
+@media (min-width: 960px) { .bandeau-morand { margin: 0 32px; padding-top: 18px; } .bandeau-morand .bm-nom { font-size: 15px; } }
+.verrouille .bandeau-morand { display: none; }
 .barre-haut {
   position: sticky; top: 0; z-index: 20;
   display: flex; align-items: center; justify-content: space-between;
@@ -716,7 +732,7 @@ a.tuile:hover { border-color: var(--trait); }
   :root, :root[data-theme="dark"] { color-scheme: light; }
   html, body { background: #fff; color: #121211; }
   body { font-size: 10.5pt; }
-  .barre-haut, .barre-outils, .nav, .feuille, .toast, .saut, .bouton-modifier, .lien-carte, .segment, .carte.exemple, #carte-installer, .bouton, .chevron, .bulle, .graphique .reticule, .graphique .point, .hyp-ligne { display: none !important; }
+  .bandeau-morand, .barre-haut, .barre-outils, .nav, .feuille, .toast, .saut, .bouton-modifier, .lien-carte, .segment, .carte.exemple, #carte-installer, .bouton, .chevron, .bulle, .graphique .reticule, .graphique .point, .hyp-ligne { display: none !important; }
   #v-donnees { display: none !important; }
   .app { display: block; }
   main { max-width: none; padding: 0; }
@@ -924,8 +940,9 @@ a.tuile:hover { border-color: var(--trait); }
 .barre-outils [hidden] { display: none; }
 .barre-outils > :is(button, a) { flex: none; width: 44px; height: 44px; min-height: 44px; padding: 0; gap: 0; border-radius: 50%;
   display: grid; place-items: center; background: var(--surface); color: var(--encre); border: 1px solid var(--ligne); }
-.barre-outils > .bouton-pdf { font-size: 0; }
-.barre-outils > .bouton-pdf::before { width: 19px; height: 19px; }
+/* Rapport PDF : l'icône seule, centrée. Le texte caché ne prend plus une seconde rangée (l'icône remontait). */
+.barre-outils > .bouton-pdf { display: flex; align-items: center; justify-content: center; font-size: 0; line-height: 0; }
+.barre-outils > .bouton-pdf::before { width: 19px; height: 19px; flex: none; }
 .barre-outils > :is(.bouton-donnees, .bouton-installer) span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .barre-outils > .bouton-installer { order: 9; }
 /* Ordinateur : ces boutons sont dans la colonne de gauche et l'en-tête de chaque page. */

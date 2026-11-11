@@ -114,7 +114,7 @@
     independance: { multiple: 25, depenses: 0, anneeNaissance: 0 },
     jalonsPerso: [],
     // Mode composé (Loi 2) : vos hypothèses, en attendant les montants officiels (Calc.COMPOSE.officiel).
-    loi2: { capitation: null, suppVulnerable: null, affilies: null, capitationAffilie: null, tarifVisite: null, tauxHoraire: null, heuresIndirectes: null, majorationNouveau: null },
+    loi2: { capitation: null, suppVulnerable: null, affilies: null, capitationAffilie: null, tarifVisite: null, tauxHoraire: null, heuresIndirectes: null, partOrphelins: null, anneePEC: null },
     dossier: {},
     plans: [],
     // Bilans du mois : revenu net reçu et dépenses, d'après le relevé.

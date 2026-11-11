@@ -491,6 +491,10 @@
     return { heures, garde, heuresHoraire, heuresAuDela, gardeAuDela, autresAuDela, plafondHeures, perteHeures, nbVisites, nbPriseEnCharge, inscritsDepart, inscritsFin, vulnerablesFin, semainesPalierHaut, gainPalier,
       patientsVus, forfaitGmfPossible, detailCompensation, activites, detailActivites, basePolyvalence, polyvalence, pctPolyvalence, anneePratique, detailVolume, examens,
       visitesApprenants: W * T * apprenants, heuresSupervision: heuresSup, tarifMoyenRdv, tarifMoyenSrv,
+      // Pour le mode composé (Loi 2) : majoration du territoire, sans-rendez-vous (nombre et valeur à 100 %) et
+      // enseignement à 100 % (EP 42 : l'intervention de supervision, ou les visites des apprenants si la personne les facture).
+      maj, nbSrv: W * SRV * patientsSRV, valeurSrv: visitesSrv * maj,
+      supervisionCent: visitesApprenants ? visitesAppr * maj : W * T * heuresSup * m("acteSupervision") * maj,
       horaire, mixte, acte, ecart: mixte.total - horaire.total, seuilPatients: seuil, seuilActe, seuilMixte, seuilActeMixte, seuilActeMixteApresFrais, demiJourneeClinique };
   }
 
@@ -517,42 +521,76 @@
      ============================================================ */
   const COMPOSE = {
     parts: { capitation: 0.5, actes: 0.3, horaire: 0.2 },
-    heuresMaxJour: 14, majorationNouveau: { an1: 500, an2: 750 }, garantieMois: 12,
-    source: "FMOQ, Modèle de rémunération composé en première ligne : résumé-synthèse (octobre 2026) ; entente de principe du 10 décembre 2025",
-    // { capitation, suppVulnerable, capitationAffilie, tarifVisite, tauxHoraire, majorationNouveau, date: "AAAA-MM-JJ", source }
+    heuresMaxJour: 14, garantieMois: 12, absenceMaxSemaines: 13,
+    // Début de pratique en prise en charge : capitation majorée de 100 % sur les 500 premiers patients associés les
+    // 12 premiers mois, sur les 750 premiers les 12 mois suivants (capsule de la FMOQ, 2026).
+    majorationNouveau: { an1: 500, an2: 750, pct: 100 },
+    /* Exemple de table actuarielle « en discussion avec le gouvernement » (capsule de la FMOQ, 2026), lu sur le graphique :
+       indice moyen des 20 à 90 ans et plus, par rapport à un patient associé non vulnérable du même âge. Groupes 1 à 4 de
+       vulnérabilité, rapprochés des groupes de l'EP 40 (une catégorie : groupe 1 ; deux : groupe 2 ; trois ou plus : 3 et 4).
+       Ce n'est pas un barème : il sert de valeur de départ, jusqu'aux montants officiels. */
+    ponderationExemple: { groupe1: 1.72, groupe2: 2.08, groupe34: 2.47, affilie: 0.67 },
+    source: "FMOQ, Modèle de rémunération composé en première ligne : résumé-synthèse (octobre 2026) et capsule explicative (2026) ; entente de principe du 10 décembre 2025",
+    // { capitation, suppVulnerable, capitationAffilie, tarifVisite, tauxHoraire, date: "AAAA-MM-JJ", source }
     officiel: null,
   };
   const n0 = v => Math.max(0, Number.isFinite(+v) ? +v : 0);
+  // Année de prise en charge au passage au mode composé : 1, 2, ou 3 (plus tard, sans majoration).
+  const anneePEC = o => { const a = Math.floor(+o.anneePEC || (o.nouveau ? 1 : 3)); return a < 1 ? 1 : a > 3 ? 3 : a; };
+  // Rapport capitation d'un patient vulnérable / non vulnérable selon la répartition des vulnérables par groupe (EP 40).
+  function ponderationVulnerable(groupes = {}, P = COMPOSE.ponderationExemple) {
+    const g2 = Math.min(1, n0(groupes.g2)), g34 = Math.min(1 - g2, n0(groupes.g34));
+    return (1 - g2 - g34) * P.groupe1 + g2 * P.groupe2 + g34 * P.groupe34;
+  }
   /* Revenu d'une année au mode composé, à partir du calcul du revenu (revenuGmfu) et de paramètres p :
      - capitation : patients associés (inscrits moyens de l'année) × capitation, plus un supplément par patient vulnérable,
-       plus les patients affiliés × leur tarif fixe ; majorée pour un nouveau médecin sur ses 500 premiers patients ;
-     - actes : chaque visite de l'année au tarif moyen d'une visite (un seul tarif, sans égard à l'âge ni à la vulnérabilité) ;
+       plus les patients affiliés × leur tarif fixe ; majorée de 100 % sur les 500 premiers associés la 1re année de prise
+       en charge, les 750 premiers la 2e (o.anneePEC) ;
+     - actes : les visites de vos patients au tarif moyen d'une visite (un seul tarif, sans égard à l'âge ni à la
+       vulnérabilité). Hors du modèle, à 100 % du tarif actuel : les visites de patients orphelins (la part p.partOrphelins
+       des sans-rendez-vous, 100 % par défaut) et l'enseignement (EP 42) ;
      - horaire : heures en clinique plus heures de soins indirects, au taux horaire.
-     o : { semaines, nouveau (première année de prise en charge) }. Hypothèse de l'app, en attendant les règles : la
-     capitation remplace les forfaits d'inscription, de volume et GMF ; le reste (activités en établissement, demi-per diem,
-     compensation des frais de cabinet, autres revenus, activités exclues) ne change pas. */
+     Les trois composantes suivent la majoration du territoire (annexes XII et XII-A) et échappent aux plafonds trimestriels.
+     o : { semaines, anneePEC (1, 2 ou 3), nouveau (ancien nom : 1re année) }. Hypothèse de l'app, en attendant les règles :
+     la capitation remplace les forfaits d'inscription, de volume et GMF ; le reste (activités en établissement, demi-per
+     diem, compensation des frais de cabinet, autres revenus, activités exclues) ne change pas. */
   function revenuCompose(g, p = {}, o = {}) {
     const associes = (n0(g.inscritsDepart) + n0(g.inscritsFin)) / 2;
     const vulnerables = n0(g.inscritsFin) > 0 ? n0(g.vulnerablesFin) * associes / n0(g.inscritsFin) : 0;
-    const affilies = n0(p.affilies), majores = o.nouveau ? Math.min(associes, COMPOSE.majorationNouveau.an1) : 0;
-    const majoration = majores * n0(p.capitation) * n0(p.majorationNouveau) / 100;
-    const capitation = associes * n0(p.capitation) + vulnerables * n0(p.suppVulnerable) + affilies * n0(p.capitationAffilie) + majoration;
-    const visites = n0(g.nbVisites), actes = visites * n0(p.tarifVisite);
+    const maj = n0(g.maj) || 1, an = anneePEC(o), M = COMPOSE.majorationNouveau;
+    const affilies = n0(p.affilies), capAssocies = associes * n0(p.capitation) + vulnerables * n0(p.suppVulnerable);
+    const majores = an === 1 ? Math.min(associes, M.an1) : an === 2 ? Math.min(associes, M.an2) : 0;
+    const majoration = associes > 0 ? majores * (capAssocies / associes) * M.pct / 100 : 0;
+    const capitation = capAssocies + affilies * n0(p.capitationAffilie) + majoration;
+    const partOrph = p.partOrphelins == null || p.partOrphelins === "" ? 1 : Math.min(1, n0(p.partOrphelins) / 100);
+    const srvOrphelins = n0(g.nbSrv) * partOrph, orphelins = n0(g.valeurSrv) * partOrph;
+    const enseignement = n0(g.supervisionCent), visitesApprenants = n0(g.visitesApprenants);
+    const visites = Math.max(0, n0(g.nbVisites) - srvOrphelins - visitesApprenants), actes = visites * n0(p.tarifVisite);
     const indirectes = n0(p.heuresIndirectes) * n0(o.semaines), heures = n0(g.heures) + indirectes, horaire = heures * n0(p.tauxHoraire);
-    const a = g.acte || {}, restent = n0(a.activites) + n0(a.compensation) + n0(a.autres) + n0(a.perDiem) + n0(a.polyvalence);
-    const premiereLigne = capitation + actes + horaire, total = premiereLigne + restent;
-    const part = x => premiereLigne > 0 ? x / premiereLigne : 0;
-    return { associes, vulnerables, affilies, majoration, visites, heuresClinique: n0(g.heures), indirectes, heures, capitation, actes, horaire, restent,
-      premiereLigne, total, parts: { capitation: part(capitation), actes: part(actes), horaire: part(horaire) } };
+    const a = g.acte || {}, inchanges = n0(a.activites) + n0(a.compensation) + n0(a.autres) + n0(a.perDiem) + n0(a.polyvalence);
+    const restent = inchanges + orphelins + enseignement;
+    const sansMaj = capitation + actes + horaire, premiereLigne = sansMaj * maj, total = premiereLigne + restent;
+    // Parts de l'entente (50-30-20) : sans la majoration des nouveaux médecins, qui s'y ajoute.
+    const base = sansMaj - majoration, part = x => base > 0 ? x / base : 0;
+    return { associes, vulnerables, affilies, anneePEC: an, majores, majoration: majoration * maj, maj, visites, srvOrphelins, orphelins, visitesApprenants, enseignement,
+      heuresClinique: n0(g.heures), indirectes, heures, capitation: capitation * maj, actes: actes * maj, horaire: horaire * maj, inchanges, restent,
+      premiereLigne, total, parts: { capitation: part(capitation - majoration), actes: part(actes), horaire: part(horaire) } };
   }
   /* Hypothèses de départ : celles qui redonnent un revenu cible (par exemple le brut du mode actuel), réparti selon les
-     parts de l'entente. Ce sont des hypothèses calculées, pas des montants officiels. */
+     parts de l'entente, sans la majoration des nouveaux médecins (elle s'ajoute ensuite). Entre patients, la capitation suit
+     l'exemple de table actuarielle (vulnérable selon le groupe, affilié aux deux tiers). Ce sont des hypothèses calculées,
+     pas des montants officiels. o : { semaines, heuresIndirectes, affilies, partOrphelins, groupes: { g2, g34 } }. */
   function calibrerCompose(g, cible, o = {}, parts = COMPOSE.parts) {
-    const r = revenuCompose(g, { heuresIndirectes: o.heuresIndirectes }, o), pl = Math.max(0, (+cible || 0) - r.restent);
+    const base = { heuresIndirectes: o.heuresIndirectes, partOrphelins: o.partOrphelins, affilies: o.affilies };
+    const r = revenuCompose(g, base, { ...o, anneePEC: 3 }), pl = Math.max(0, (+cible || 0) - r.restent) / r.maj;
+    const P = COMPOSE.ponderationExemple, rv = ponderationVulnerable(o.groupes);
+    const poids = r.associes + r.vulnerables * (rv - 1) + r.affilies * P.affilie;
+    const capitation = poids > 0 ? pl * parts.capitation / poids : 0;
     return {
-      capitation: r.associes > 0 ? pl * parts.capitation / r.associes : 0, suppVulnerable: 0, affilies: 0, capitationAffilie: 0, majorationNouveau: 0,
+      capitation, suppVulnerable: capitation * (rv - 1), affilies: r.affilies, capitationAffilie: capitation * P.affilie,
       tarifVisite: r.visites > 0 ? pl * parts.actes / r.visites : 0,
       tauxHoraire: r.heures > 0 ? pl * parts.horaire / r.heures : 0, heuresIndirectes: n0(o.heuresIndirectes),
+      partOrphelins: o.partOrphelins == null || o.partOrphelins === "" ? 100 : n0(o.partOrphelins),
     };
   }
   /* Garantie de revenu de 12 mois (document-cadre) : si le mode composé paie moins que l'ancien mode, à prestation égale,
@@ -1321,7 +1359,7 @@
     return { plafondQc, admissibleQc, taux, creditQc: admissibleQc * taux, plafondFed, deduction };
   }
 
-  const Calc = { COMPOSE, revenuCompose, calibrerCompose, garantieCompose, CELIAPP, celiappParAn, ACTES, CNESST, valeurActes, supervisionOuVisites, demiJourneeSupervision, demiJourneeActes, P2026, P2027, parametres, utiliserAnnee, avecAnnee, parametresActifs: () => PAR, VISITES, PRISE_EN_CHARGE, TARIFS_DEFAUT, TARIFS_LIEU, MONTANTS_LIEU, RAMQ, PCT_AU_DELA, PCT_GARDE, GARDE_MAX_94, SUPERVISION_MAX_APRES_MIDI, partAssiduite, lieuTarifs, montantsLieu, montantsVolume, tauxPolyvalence, SEUILS_POLYVALENCE, ACTIVITES_POLYVALENTES, compensationCabinet, tarifVisite, revenuGmfu, joursActivite, revenuActivite, impotParticulier, impotSalarie, impotMixte, FMRQ, salaireResident, transfertsConjoints, prestationsFamille, primeMedicaments, tauxMarginal,
+  const Calc = { COMPOSE, revenuCompose, calibrerCompose, garantieCompose, ponderationVulnerable, CELIAPP, celiappParAn, ACTES, CNESST, valeurActes, supervisionOuVisites, demiJourneeSupervision, demiJourneeActes, P2026, P2027, parametres, utiliserAnnee, avecAnnee, parametresActifs: () => PAR, VISITES, PRISE_EN_CHARGE, TARIFS_DEFAUT, TARIFS_LIEU, MONTANTS_LIEU, RAMQ, PCT_AU_DELA, PCT_GARDE, GARDE_MAX_94, SUPERVISION_MAX_APRES_MIDI, partAssiduite, lieuTarifs, montantsLieu, montantsVolume, tauxPolyvalence, SEUILS_POLYVALENCE, ACTIVITES_POLYVALENTES, compensationCabinet, tarifVisite, revenuGmfu, joursActivite, revenuActivite, impotParticulier, impotSalarie, impotMixte, FMRQ, salaireResident, transfertsConjoints, prestationsFamille, primeMedicaments, tauxMarginal,
     remboursementReer, impotDividendes, impotSociete, impotSalaireEtSociete, comparerSociete, simulerDettes, interetsEtudesPeriodes, tauxReel, tauxMensuel, moisRestants, paiementPour, projeterReee, projeterValeurNette, rendementProfil, fraisGarde };
   if (typeof module !== "undefined" && module.exports) module.exports = Calc;
   else racine.Calc = Calc;

@@ -620,14 +620,33 @@ verifier("transition incorporée : une seule déclaration paie davantage, et gar
   const p = { capitation: 100, suppVulnerable: 20, affilies: 50, capitationAffilie: 40, tarifVisite: 30, tauxHoraire: 50, heuresIndirectes: 4 };
   const x = C.revenuCompose(g, p, { semaines: 44 });
   verifier("Loi 2 : capitation (associés, vulnérables, affiliés), visites à tarif unique, heures directes et indirectes",
-    proche(x.capitation, x.associes * 100 + x.vulnerables * 20 + 50 * 40, 1e-6) && proche(x.actes, g.nbVisites * 30, 1e-6)
+    proche(x.capitation, x.associes * 100 + x.vulnerables * 20 + 50 * 40, 1e-6) && proche(x.actes, (g.nbVisites - g.nbSrv - g.visitesApprenants) * 30, 1e-6)
     && proche(x.horaire, (g.heures + 4 * 44) * 50, 1e-6) && proche(x.total, x.capitation + x.actes + x.horaire + x.restent, 1e-6), x);
-  const nouveau = C.revenuCompose({ ...g, inscritsDepart: 0, inscritsFin: 1200, vulnerablesFin: 0 }, { capitation: 100, majorationNouveau: 20 }, { nouveau: true });
-  verifier("Loi 2 : nouveau médecin, majoration de la capitation sur ses 500 premiers patients", proche(nouveau.majoration, 500 * 100 * 0.2, 1e-6), nouveau.majoration);
+  const g0 = { ...g, inscritsDepart: 1200, inscritsFin: 1200, vulnerablesFin: 0 };
+  const an1 = C.revenuCompose(g0, { capitation: 100 }, { anneePEC: 1 }), an2 = C.revenuCompose(g0, { capitation: 100 }, { anneePEC: 2 }), an3 = C.revenuCompose(g0, { capitation: 100 }, { anneePEC: 3 });
+  verifier("Loi 2 : début de pratique, capitation majorée de 100 % sur 500 patients la 1re année, 750 la 2e, rien ensuite (capsule FMOQ)",
+    proche(an1.majoration, 500 * 100, 1e-6) && proche(an2.majoration, 750 * 100, 1e-6) && an3.majoration === 0
+    && proche(C.revenuCompose(g0, { capitation: 100 }, { nouveau: true }).majoration, 500 * 100, 1e-6), [an1.majoration, an2.majoration, an3.majoration]);
+  // Visites de patients orphelins (sans-rendez-vous) et enseignement (EP 42) : hors du modèle, à 100 % du tarif actuel.
+  const gs = C.revenuGmfu({ ...rev, inscritsDebut: 1000, partVulnerable: 30, demiJourneesSRV: 1, patientsSRV: 16 });
+  const tous = C.revenuCompose(gs, { tarifVisite: 30 }), moitie = C.revenuCompose(gs, { tarifVisite: 30, partOrphelins: 50 });
+  verifier("Loi 2 : les visites de patients orphelins restent payées à 100 %, hors du tarif unique",
+    gs.nbSrv > 0 && proche(tous.orphelins, gs.valeurSrv, 1e-6) && proche(tous.visites, gs.nbVisites - gs.nbSrv - gs.visitesApprenants, 1e-6)
+    && proche(moitie.orphelins, gs.valeurSrv / 2, 1e-6) && proche(moitie.visites, tous.visites + gs.nbSrv / 2, 1e-6), { nbSrv: gs.nbSrv, valeur: gs.valeurSrv });
+  verifier("Loi 2 : l'enseignement (EP 42) reste payé à 100 % et compte dans ce qui ne change pas", proche(x.enseignement, g.supervisionCent, 1e-6) && proche(x.restent, x.inchanges + x.orphelins + x.enseignement, 1e-6));
+  const gm = { ...g, maj: 1.1 }, xm = C.revenuCompose(gm, p, { semaines: 44 });
+  verifier("Loi 2 : la majoration du territoire (annexes XII et XII-A) s'applique aux trois composantes", proche(xm.premiereLigne, x.premiereLigne * 1.1, 1e-6), [x.premiereLigne, xm.premiereLigne]);
+  verifier("Loi 2 : exemple de table actuarielle, un vulnérable vaut 1,7 à 2,5 fois un non vulnérable selon son groupe",
+    proche(C.ponderationVulnerable({}), 1.72, 1e-9) && proche(C.ponderationVulnerable({ g2: 1 }), 2.08, 1e-9) && proche(C.ponderationVulnerable({ g34: 1 }), 2.47, 1e-9));
   verifier("Loi 2 : garantie de revenu la première année, la différence avec l'ancien mode", C.garantieCompose(180000, 200000) === 20000 && C.garantieCompose(210000, 200000) === 0);
-  const cible = 250000, o = { semaines: 44, heuresIndirectes: 3 }, cal = C.calibrerCompose(g, cible, o), y = C.revenuCompose(g, cal, o);
-  verifier("Loi 2 : calibré sur un revenu cible, il le redonne, réparti 50-30-20", proche(y.total, cible, 0.01) && proche(y.parts.capitation, 0.5, 1e-9)
-    && proche(y.parts.actes, 0.3, 1e-9) && proche(y.parts.horaire, 0.2, 1e-9), { total: y.total, parts: y.parts });
+  const cible = 250000, o = { semaines: 44, heuresIndirectes: 3, affilies: 200, groupes: { g2: 0.3, g34: 0.2 } };
+  const cal = C.calibrerCompose(gm, cible, o), y = C.revenuCompose(gm, cal, o);
+  verifier("Loi 2 : calibré sur un revenu cible, il le redonne, réparti 50-30-20 (majoration du territoire et affiliés compris)", proche(y.total, cible, 0.01) && proche(y.parts.capitation, 0.5, 1e-9)
+    && proche(y.parts.actes, 0.3, 1e-9) && proche(y.parts.horaire, 0.2, 1e-9) && proche(cal.capitationAffilie, cal.capitation * 0.67, 1e-9)
+    && proche(cal.suppVulnerable, cal.capitation * (C.ponderationVulnerable(o.groupes) - 1), 1e-9), { total: y.total, parts: y.parts });
+  const y1 = C.revenuCompose(gm, cal, { ...o, anneePEC: 1 });
+  verifier("Loi 2 : la majoration des nouveaux médecins s'ajoute au revenu calibré, sans changer les parts 50-30-20", y1.total > y.total + 1 && proche(y1.total - y.total, y1.majoration, 0.01)
+    && proche(y1.parts.capitation, 0.5, 1e-9) && proche(y1.parts.actes, 0.3, 1e-9), { maj: y1.majoration, parts: y1.parts });
   verifier("Loi 2 : sans hypothèse, rien de la première ligne n'est compté", C.revenuCompose(g, {}).premiereLigne === 0);
 }
 

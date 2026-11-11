@@ -37,15 +37,18 @@ Lisez ce fichier en entier avant de commencer. Il passe avant vos habitudes.
    Chaque correction ajoute ou ajuste un test qui aurait échoué avant.
    Tests ciblés : `SCENARIOS=residence,transfert node tests/navigateur.test.js`.
 8. **Décisions déjà prises : ne pas les reproposer comme nouveautés.**
-   - Le mode de rémunération composé (Loi 2) : l'onglet « Loi 2 » de Comparer le
-     calcule avec les hypothèses de la personne, marquées « hypothèse ». Aucun
+   - Le mode de rémunération composé (Loi 2) : la page « Loi 2 » (Estimateur, Ce qui
+     change, Documents) le calcule avec les hypothèses de la personne, marquées
+     « hypothèse ». Aucun
      montant officiel n'est inventé : `Calc.COMPOSE.officiel` reste `null`
      jusqu'à la publication (entente finale du 13 août 2026).
    - Comptes : Supabase, un seul compte (celui de la personne), données
      chiffrées sur l'appareil, conception décrite dans `README.md`. Le lien de
      transfert avec code reste offert.
-   - Chaque page : un résumé, puis « Voir tout le détail ». Cinq onglets : Aperçu,
-     Revenu (avec l'Impôt : « Votre revenu · Impôt »), Comparer, Budget, Patrimoine.
+   - Chaque page : un résumé, puis « Voir tout le détail ». Barre du bas : Revenu,
+     Comparer, Codes (répertoire des actes, CNESST), Loi 2, Finances (« Budget ·
+     Patrimoine · Impôt ») ; l'Aperçu s'ouvre par le logo. Tout en haut, le bandeau
+     « MORAND · MÉDECINE FAMILIALE » mène à l'accueil de morand.org.
    - Identité visuelle : polices Inter et Newsreader hébergées dans
      `polices/`, couleurs de `styles.css`. Pas de « pas à pas ».
    - Résident et externe supervisés : deux tarifs distincts, gardés séparés.

@@ -786,11 +786,11 @@ async function acomptesCeliapp(b, base) {
 async function finitions(b, base) {
   const { ctx, p, erreurs } = await ouvrir(b, base, { page: "avenir/projection" });
   const r = await p.evaluate(() => ({
-    nav: document.querySelector('.nav [data-onglet="apercu"]').textContent.trim(), titre: document.getElementById("h-apercu").textContent.trim(),
+    nav: document.querySelector(".barre-haut .marque").getAttribute("href"), titre: document.getElementById("h-apercu").textContent.trim(),
     donnees: getComputedStyle(document.querySelector(".bouton-donnees span")).display, taille: parseFloat(getComputedStyle(document.querySelector(".nav a")).fontSize),
     fondu: document.getElementById("pa-onglets").classList.contains("defile-plus"),
     axe: [...document.querySelectorAll("#v-avenir .graphique .etiquette")].map(t => t.textContent).filter(t => /M\$|k\$|^0 \$$/.test(t)) }));
-  verifier("finitions : « Aperçu » dans la navigation et en titre", r.nav === "Aperçu" && r.titre === "Aperçu", r);
+  verifier("finitions : l'Aperçu s'ouvre par le logo ; « Aperçu » en titre", r.nav === "#apercu" && r.titre === "Aperçu", r);
   verifier("finitions : l'icône Données est nommée pour les lecteurs d'écran", await p.evaluate(() => document.querySelector(".barre-outils .bouton-donnees").getAttribute("aria-label") === "Données et confidentialité"), r.donnees);
   verifier("finitions : barre du bas en 12 px au moins", r.taille >= 12, r.taille);
   verifier("finitions : fondu des sous-onglets qui débordent", r.fondu);
@@ -1127,10 +1127,10 @@ async function comparerActes(b, base) {
     conclusion: document.getElementById("rv-sup-conclusion").textContent, bouton: (document.querySelector("#rv-sup-actions button") || {}).textContent || "",
     nav: (document.querySelector('.nav [aria-current="page"]') || {}).dataset?.onglet }));
   const actes = await visibles();
-  verifier("comparer : #revenu/actes mène à l'onglet Actes ; cinq sous-onglets ; le répertoire, puis les actes et la CNESST repliés",
-    vue.hash === "#comparer/actes" && vue.onglets.join() === "Modes,Demi-journée,Actes,Offres,Loi 2" && vue.nav === "comparer"
-    && actes.join() === "rv-carte-repertoire,rv-carte-actes,rv-carte-cnesst" && !(await debord())
-    && await p.evaluate(() => !document.getElementById("rv-carte-actes").open && !document.getElementById("rv-carte-cnesst").open && !document.getElementById("rv-sup-plus").open), { vue, actes });
+  verifier("comparer : #revenu/actes mène à l'onglet Actes ; quatre sous-onglets ; ce que rapporte chaque acte, replié (le répertoire et la CNESST sont dans Codes)",
+    vue.hash === "#comparer/actes" && vue.onglets.join() === "Modes,Demi-journée,Actes,Offres" && vue.nav === "comparer"
+    && actes.join() === "rv-carte-actes" && !(await debord())
+    && await p.evaluate(() => !document.getElementById("rv-carte-actes").open && !document.getElementById("rv-sup-plus").open), { vue, actes });
   verifier("actes : la supervision rapporte 51,94 $ de plus, environ 4 156 $ sur 80 demi-journées ; les visites dès 10", vue.conclusion.includes("51,94") && vue.conclusion.replace(/\s/g, " ").includes("4 156")
     && vue.conclusion.includes("80 demi-journées") && vue.conclusion.includes("dès 10 visites"), vue.conclusion);
   await allerA(p, "revenu/supervision");
@@ -1168,7 +1168,7 @@ async function comparerActes(b, base) {
   const parOnglet = await p.evaluate(() => { const n = {}; document.querySelectorAll("#v-comparer .detail-seul[data-sous]").forEach(c => { n[c.dataset.sous] = (n[c.dataset.sous] || 0) + 1; });
     return { n, cartes: document.querySelectorAll("#v-comparer .carte.detail-seul").length }; });
   verifier("comparer : chaque carte du détail appartient à un onglet", Object.values(parOnglet.n).reduce((a, x) => a + x, 0) === parOnglet.cartes
-    && Object.keys(parOnglet.n).join() === "modes,demijournee,actes,offres,loi2", parOnglet);
+    && Object.keys(parOnglet.n).join() === "modes,demijournee,actes,offres", parOnglet);
   await allerA(p, "comparer"); await p.waitForTimeout(200);
   const resume = await p.evaluate(() => {
     const c = document.getElementById("rv-r-modes"), hero = document.getElementById("cp-hero"), liens = document.getElementById("cp-r-liens");
@@ -1202,13 +1202,13 @@ async function comparerActes(b, base) {
   const clsc = await p.evaluate(() => ({ hash: location.hash, onglets: [...document.querySelectorAll("#cp-onglets button")].map(x => x.textContent),
     seuils: !!document.getElementById("rv-carte-seuils").offsetParent, texte: document.getElementById("rv-carte-seuils").textContent,
     debord: document.documentElement.scrollWidth > document.documentElement.clientWidth }));
-  verifier("seuils : en CLSC, l'onglet Modes et ses seuils, sans la supervision", clsc.hash === "#comparer/modes" && clsc.onglets.join() === "Modes,Demi-journée,Actes,Offres,Loi 2" && clsc.seuils && !clsc.debord
+  verifier("seuils : en CLSC, l'onglet Modes et ses seuils, sans la supervision", clsc.hash === "#comparer/modes" && clsc.onglets.join() === "Modes,Demi-journée,Actes,Offres" && clsc.seuils && !clsc.debord
     && clsc.texte.includes("patients par demi-journée") && clsc.texte.includes("Dès") && !clsc.texte.includes("Visites plutôt que la supervision"), clsc);
   await remplacer(p, { "revenu.milieu": "clinique" });
   await allerA(p, "comparer/modes");
   const clinique = { hash: await p.evaluate(() => location.hash), onglets: await p.evaluate(() => [...document.querySelectorAll("#cp-onglets button")].map(x => x.textContent)), cartes: await visibles() };
   verifier("comparer : en clinique, à l'acte seulement, l'onglet « Rythme » garde le revenu selon les demi-journées, sans les modes ni les seuils",
-    clinique.hash === "#comparer/modes" && clinique.onglets.join() === "Rythme,Demi-journée,Actes,Offres,Loi 2" && clinique.cartes.join() === "rv-carte-sens", clinique);
+    clinique.hash === "#comparer/modes" && clinique.onglets.join() === "Rythme,Demi-journée,Actes,Offres" && clinique.cartes.join() === "rv-carte-sens", clinique);
   await allerA(p, "comparer");
   const horsGmfu = await p.evaluate(() => ({ hero: document.getElementById("cp-hero").hidden, modes: document.getElementById("rv-r-modes").hidden,
     sup: !!document.getElementById("rv-r-supervision").offsetParent, texte: document.getElementById("rv-r-supervision").textContent, intro: document.getElementById("sab-intro").textContent,
@@ -1606,32 +1606,45 @@ async function superviseurAB(b, base) {
 /* 41 f. Loi 2 : la page du mode composé. Sans montant officiel, elle le dit et attend des hypothèses ; « Partir de mon
    revenu actuel » redonne le brut du mode actuel, réparti 50-30-20 ; une hypothèse tapée change le résultat ; 320 px. */
 async function loi2(b, base) {
-  const { ctx, p, erreurs } = await ouvrir(b, base, { page: "comparer", largeur: 320 });
-  await remplacer(p, { "revenu.milieu": "gmfu", "revenu.annee": "type", "revenu.modeBudget": "mixte", "revenu.inscritsDebut": 1000, "revenu.partVulnerable": 30 });
+  const { ctx, p, erreurs } = await ouvrir(b, base, { page: "loi2", largeur: 320 });
+  await remplacer(p, { "revenu.milieu": "gmfu", "revenu.annee": "type", "revenu.modeBudget": "mixte", "revenu.inscritsDebut": 1000, "revenu.partVulnerable": 30,
+    "revenu.demiJourneesSRV": 1, "revenu.patientsSRV": 12, "residence.active": false });
   await allerA(p, "comparer/loi2");
-  const lire = () => p.evaluate(() => ({ statut: document.getElementById("loi2-statut").textContent, res: document.getElementById("loi2-resultat").textContent,
-    vu: !!document.getElementById("cp-loi2").offsetParent, onglet: !!document.querySelector('#cp-onglets [data-v="loi2"], #cp-onglets button[aria-pressed="true"]'),
+  const lire = () => p.evaluate(() => ({ hash: location.hash, statut: document.getElementById("loi2-statut").textContent, res: document.getElementById("loi2-resultat").textContent,
+    vu: !!document.getElementById("cp-loi2").offsetParent, onglets: [...document.querySelectorAll("#l2-onglets button")].map(x => x.textContent),
+    nav: (document.querySelector('.nav [aria-current="page"]') || {}).dataset?.onglet, vise: document.getElementById("loi2-vise").textContent,
     debord: document.documentElement.scrollWidth > document.documentElement.clientWidth }));
   const v0 = await lire();
-  verifier("Loi 2 : onglet de Comparer ; architecture du document-cadre, montants non fixés, la page attend des hypothèses", v0.vu && v0.statut.includes("document-cadre") && v0.statut.includes("pas ses montants")
-    && v0.res.includes("Inscrivez vos hypothèses") && !v0.debord, v0);
-  verifier("Loi 2 : « Ce que prévoit le document-cadre » : associés et affiliés, garantie de 12 mois, exclusion des enseignants en GMF-U",
-    await p.evaluate(() => { const t = document.getElementById("loi2-connu").textContent; return t.includes("affiliés") && t.includes("12 mois") && t.includes("enseignant en GMF-U") && t.includes("14 h"); }));
+  verifier("Loi 2 : sa propre page (l'ancienne adresse y mène) ; Estimateur, Ce qui change, Documents ; montants non fixés, la page attend des hypothèses",
+    v0.hash === "#loi2/estimateur" && v0.nav === "loi2" && v0.onglets.join() === "Estimateur,Ce qui change,Documents" && v0.vu
+    && v0.statut.includes("document-cadre") && v0.statut.includes("pas les montants") && v0.res.includes("Inscrivez vos hypothèses") && !v0.debord, v0);
+  verifier("Loi 2 : en GMF-U, l'enseignant peut garder son mode actuel ; à 60 ans aussi", v0.vise.includes("enseignant en GMF-U") && v0.vise.includes("60 ans"), v0.vise);
   await p.click("#loi2-calibrer"); await p.waitForTimeout(300);
-  const cal = await p.evaluate(() => { const R = window.Wealthnord.resultats(), S = window.Wealthnord.etat(), x = window.Calc.revenuCompose(R.rev, S.loi2, { semaines: S.revenu.semaines, nouveau: S.revenu.annee === "premiere" });
-    return { total: x.total, cible: R.rev[R.mode].total, parts: x.parts, texte: document.getElementById("loi2-resultat").textContent }; });
-  verifier("Loi 2 : « Partir de mon revenu actuel » redonne le brut du mode actuel, réparti 50-30-20, marqué « hypothèse »",
-    Math.abs(cal.total - cal.cible) < 20 && Math.abs(cal.parts.capitation - 0.5) < 0.001 && Math.abs(cal.parts.actes - 0.3) < 0.001 && cal.texte.includes("hypothèse"), cal);
+  const cal = await p.evaluate(() => { const R = window.Wealthnord.resultats(), S = window.Wealthnord.etat(), x = window.Calc.revenuCompose(R.rev, S.loi2, { semaines: S.revenu.semaines, anneePEC: 3 });
+    return { total: x.total, cible: R.rev[R.mode].total, parts: x.parts, orph: x.orphelins, affilie: S.loi2.capitationAffilie / S.loi2.capitation, texte: document.getElementById("loi2-resultat").textContent }; });
+  verifier("Loi 2 : « Partir de mon revenu actuel » redonne le brut du mode actuel, réparti 50-30-20, marqué « hypothèse » ; orphelins à 100 % ; affilié aux deux tiers",
+    Math.abs(cal.total - cal.cible) < 20 && Math.abs(cal.parts.capitation - 0.5) < 0.001 && Math.abs(cal.parts.actes - 0.3) < 0.001 && cal.texte.includes("hypothèse")
+    && cal.orph > 0 && cal.texte.includes("Patients orphelins") && Math.abs(cal.affilie - 0.67) < 0.01, cal);
+  await p.click('#loi2-annee button[data-v="1"]'); await p.waitForTimeout(300);
+  const an1 = await p.evaluate(() => ({ an: window.Wealthnord.etat().loi2.anneePEC, texte: document.getElementById("loi2-resultat").textContent, aide: document.getElementById("loi2-annee-aide").textContent }));
+  verifier("Loi 2 : en 1re année de prise en charge, la majoration de 100 % sur 500 patients s'affiche", an1.an === 1 && an1.texte.includes("Majoration, début de pratique") && an1.aide.includes("500"), an1);
   await p.fill("#rapide-loi2-tauxHoraire", "0"); await p.waitForTimeout(400);
   const zero = await p.evaluate(() => { const S = window.Wealthnord.etat(), R = window.Wealthnord.resultats();
     return { h: S.loi2.tauxHoraire, horaire: window.Calc.revenuCompose(R.rev, S.loi2, { semaines: S.revenu.semaines }).horaire, texte: document.getElementById("loi2-resultat").textContent }; });
   verifier("Loi 2 : une hypothèse tapée change le résultat", zero.h === 0 && zero.horaire === 0 && zero.texte.includes("Composante horaire"), zero);
-  await p.fill("#rapide-loi2-tauxHoraire", "1"); await p.fill("#rapide-loi2-tarifVisite", "1"); await p.waitForTimeout(400);
+  await p.click('#loi2-annee button[data-v="3"]'); await p.fill("#rapide-loi2-tauxHoraire", "1"); await p.fill("#rapide-loi2-tarifVisite", "1"); await p.waitForTimeout(400);
   const garantie = await p.evaluate(() => document.getElementById("loi2-resultat").textContent);
   verifier("Loi 2 : sous l'ancien mode, la garantie de revenu de 12 mois s'affiche", garantie.includes("Garantie de revenu"), garantie.slice(0, 200));
   await p.click("#loi2-effacer"); await p.waitForTimeout(300);
   verifier("Loi 2 : « Effacer mes hypothèses » revient à l'attente", (await lire()).res.includes("Inscrivez vos hypothèses"));
-  verifier("Loi 2 : aucune erreur", erreurs.length === 0, erreurs);
+  await allerA(p, "loi2/regles");
+  const regles = await p.evaluate(() => ({ t: document.getElementById("l2-regles").textContent, vu: !!document.getElementById("l2-regles").offsetParent, est: !!document.getElementById("cp-loi2").offsetParent }));
+  verifier("Loi 2 : « Ce qui change » : orphelins et enseignement à 100 %, majoration 500 puis 750, 14 h, plafonds, 13 semaines",
+    regles.vu && !regles.est && ["orphelins", "EP 42", "750", "14 h", "plafonds trimestriels", "13 semaines", "affiliés"].every(m => regles.t.includes(m)), regles.t.slice(0, 200));
+  await allerA(p, "loi2/documents");
+  const docs = await p.evaluate(() => [...document.querySelectorAll("#l2-documents a")].map(a => ({ h: a.href, t: a.target, r: a.rel })));
+  verifier("Loi 2 : documents de la FMOQ et du gouvernement, en nouvel onglet, sans copie", docs.length === 5 && docs.every(d => /^https:\/\/www\.(fmoq\.org|quebec\.ca)\//.test(d.h) && d.t === "_blank" && d.r.includes("noopener")), docs);
+  verifier("Loi 2 : aucune erreur, aucun débordement", erreurs.length === 0 && !(await lire()).debord, erreurs);
   await ctx.close();
 }
 
@@ -1712,9 +1725,9 @@ async function supervisionPlan(b, base) {
 /* 41. Répertoire des actes (onglet Actes) : les plus fréquents au départ, puis tous ; la recherche par mot sans accents et par code, les filtres
    par groupe ; la saisie garde le focus ; rien ne déborde à 320 px. */
 async function repertoireActes(b, base) {
-  const { ctx, p, erreurs } = await ouvrir(b, base, { page: "comparer", largeur: 320 });
+  const { ctx, p, erreurs } = await ouvrir(b, base, { page: "codes", largeur: 320 });
   await remplacer(p, { "revenu.milieu": "gmfu", "revenu.modeBudget": "mixte", "revenu.enseignement": 2, "revenu.residents": 1 });
-  await allerA(p, "comparer/actes");
+  await allerA(p, "codes");
   const etat = () => p.evaluate(() => ({ compte: document.getElementById("rep-compte").textContent, titres: [...document.querySelectorAll("#rep-liste .rangee-titre")].map(x => x.textContent),
     valeurs: [...document.querySelectorAll("#rep-liste .rangee-droite")].map(x => x.textContent), focus: document.activeElement.id,
     debord: document.documentElement.scrollWidth > document.documentElement.clientWidth }));
@@ -1728,7 +1741,7 @@ async function repertoireActes(b, base) {
   verifier("répertoire : 19914 cherché dans « Formulaires » mène au demi-per diem, avec une note", ailleurs.note.includes("autres groupes") && ailleurs.titres.some(t => t.startsWith("Demi-per diem")), ailleurs);
   await p.fill("#rep-q", ""); await p.click('#rep-groupes button[data-v="frequents"]'); await p.waitForTimeout(150);
   // En GMF-U, l'essentiel du panneau Revenu ne montre ni les catégories de vulnérabilité ni les frais de cabinet.
-  await p.click("#v-comparer .bouton-modifier"); await p.waitForTimeout(250);
+  await p.click("#v-codes .bouton-modifier"); await p.waitForTimeout(250);
   const champs = await p.evaluate(() => ["revenu-partGroupe2", "revenu-partGroupe34", "revenu-partTresVulnerable", "revenu-fraisCabinetPct"]
     .map(id => { const x = document.getElementById("c-" + id); return x ? !!x.offsetParent : null; }));
   verifier("GMF-U : catégories de vulnérabilité et frais de cabinet dans le détail, pas dans l'essentiel", champs.every(v => v === false), champs);
@@ -1767,8 +1780,9 @@ async function repertoireActes(b, base) {
   await ctx.close();
 }
 
-/* 42. La barre du bas : Aperçu, Revenu, Comparer, Budget, Patrimoine. L'impôt est rangé avec le revenu (« Votre revenu ·
-   Impôt ») : Revenu reste marqué dans la barre ; le Budget et l'Aperçu y mènent aussi. Rien ne déborde à 320 px. */
+/* 42. La barre du bas : Revenu, Comparer, Codes, Loi 2, Finances ; l'Aperçu par le logo. L'impôt est rangé dans Finances
+   (« Budget · Patrimoine · Impôt ») : Finances reste marqué dans la barre ; le Budget et l'Aperçu y mènent aussi. Rien ne
+   déborde à 320 px. */
 async function revenuEtImpot(b, base) {
   const { ctx, p, erreurs } = await ouvrir(b, base, { page: "revenu" });
   const etat = () => p.evaluate(() => ({ hash: location.hash, nav: [...document.querySelectorAll(".nav > a[data-onglet]")].map(a => a.dataset.onglet),
@@ -1776,14 +1790,18 @@ async function revenuEtImpot(b, base) {
     marque: (document.querySelector('.nav [aria-current="page"]') || {}).dataset?.onglet,
     section: [...document.querySelectorAll(".vue:not([hidden]) .onglets-section a")].map(a => `${a.textContent}${a.getAttribute("aria-current") === "page" ? "*" : ""}`) }));
   const rv = await etat();
-  verifier("barre du bas : Aperçu, Revenu, Comparer, Budget, Patrimoine ; plus d'Impôt", rv.nav.join() === "apercu,revenu,comparer,budget,avenir,donnees"
-    && rv.noms.join() === "Aperçu,Revenu,Comparer,Budget,Patrimoine", rv);
-  verifier("revenu : « Votre revenu · Impôt » en haut, Votre revenu marqué", rv.section.join() === "Votre revenu*,Impôt" && rv.marque === "revenu", rv);
-  await p.click('#v-revenu .onglets-section a[data-section="impot"]'); await p.waitForTimeout(250);
+  verifier("barre du bas : Revenu, Comparer, Codes, Loi 2, Finances", rv.nav.join() === "revenu,comparer,codes,loi2,budget,donnees"
+    && rv.noms.join() === "Revenu,Comparer,Codes,Loi 2,Finances", rv);
+  verifier("revenu : plus d'onglet Impôt en haut ; Revenu marqué", rv.section.length === 0 && rv.marque === "revenu", rv);
+  await allerA(p, "budget");
+  const bu = await etat();
+  verifier("finances : « Budget · Patrimoine · Impôt » en haut du budget ; Finances marqué", bu.section.join() === "Budget*,Patrimoine,Impôt" && bu.marque === "budget", bu);
+  await p.click('#v-budget .onglets-section a[data-section="impot"]'); await p.waitForTimeout(250);
   const im = await etat();
-  verifier("impôt : un toucher sur « Impôt » ouvre l'impôt ; Revenu reste marqué dans la barre du bas", im.hash === "#impot" && im.section.join() === "Votre revenu,Impôt*" && im.marque === "revenu", im);
-  await p.click('#v-impot .onglets-section a[data-section="revenu"]'); await p.waitForTimeout(250);
-  verifier("impôt : « Votre revenu » ramène au revenu", (await etat()).hash === "#revenu");
+  verifier("impôt : un toucher sur « Impôt » ouvre l'impôt ; Finances reste marqué dans la barre du bas", im.hash === "#impot" && im.section.join() === "Budget,Patrimoine,Impôt*" && im.marque === "budget", im);
+  await p.click('#v-impot .onglets-section a[data-section="avenir"]'); await p.waitForTimeout(250);
+  const pa = await etat();
+  verifier("patrimoine : dans Finances, marqué en haut", pa.hash === "#avenir" && pa.section.join() === "Budget,Patrimoine*,Impôt" && pa.marque === "budget", pa);
   await allerA(p, "budget");
   const tuile = await p.evaluate(() => (document.querySelector('#bu-r-tuiles a.tuile[href="#impot"]') || {}).textContent || "");
   verifier("budget : le revenu disponible mène à l'impôt", tuile.includes("Revenu disponible") && tuile.includes("après impôt"), tuile);
@@ -1792,7 +1810,7 @@ async function revenuEtImpot(b, base) {
   verifier("comparer : marqué dans la barre du bas", (await etat()).marque === "comparer");
   await p.setViewportSize({ width: 320, height: 700 });
   const debords = [];
-  for (const pg of ["revenu", "revenu/detail", "impot", "comparer", "comparer/modes", "comparer/demijournee", "comparer/actes", "comparer/offres"]) {
+  for (const pg of ["revenu", "revenu/detail", "impot", "comparer", "comparer/modes", "comparer/demijournee", "comparer/actes", "comparer/offres", "codes", "loi2/estimateur", "loi2/regles", "loi2/documents", "budget", "avenir"]) {
     await allerA(p, pg);
     if (await p.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)) debords.push(pg);
   }

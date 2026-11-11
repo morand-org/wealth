@@ -52,6 +52,7 @@
 <a class="saut" href="#contenu">Aller au contenu</a>
 
 <!-- Barre du haut (téléphone) -->
+<a class="bandeau-morand" href="/" aria-label="Morand, médecine familiale : accueil du site"><span class="bm-nom">Morand</span><span class="bm-rubrique">Médecine familiale</span></a>
 <header class="barre-haut">
   <a class="marque" href="#apercu" aria-label="WealthMorand : aperçu"><svg class="marque-ico" aria-hidden="true"><use href="#wm-lion"/></svg><svg class="marque-nom" aria-hidden="true"><use href="#wm-nom"/></svg></a>
 </header>
@@ -60,11 +61,11 @@
   <!-- Navigation : barre du bas sur téléphone, colonne à gauche sur ordinateur -->
   <nav class="nav" aria-label="Sections">
     <a class="marque nav-marque" href="#apercu" aria-label="WealthMorand : accueil"><svg class="nav-sceau" aria-hidden="true"><use href="#wm-sceau"/></svg></a>
-    <a href="#apercu" data-onglet="apercu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3.5l8.5 7V20a.5.5 0 0 1-.5.5h-5v-6h-6v6H4a.5.5 0 0 1-.5-.5Z"/></svg><span>Aperçu</span></a>
     <a href="#revenu" data-onglet="revenu"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="7" width="17" height="13" rx="2.5"/><path d="M8.5 7V5.5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2V7M12 11.5v4M10 13.5h4"/></svg><span>Revenu</span></a>
     <a href="#comparer" data-onglet="comparer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M8 20h8M5 7h14M5 7l-2.5 6.5a2.6 2.6 0 0 0 5 0zM19 7l-2.5 6.5a2.6 2.6 0 0 0 5 0z"/></svg><span>Comparer</span></a>
-    <a href="#budget" data-onglet="budget"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18v3"/><rect x="4" y="8" width="16.5" height="11.5" rx="2.5"/><path d="M16 13.75h.01"/></svg><span>Budget</span></a>
-    <a href="#avenir" data-onglet="avenir"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 17.5 9 12l3.5 3.5 8-8"/><path d="M15 7.5h5.5V13"/></svg><span>Patrimoine</span></a>
+    <a href="#codes" data-onglet="codes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 4 7.5 20M16.5 4l-2 16M4.5 9h15M4 15h15"/></svg><span>Codes</span></a>
+    <a href="#loi2" data-onglet="loi2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h8l4 4V20a.5.5 0 0 1-.5.5H6.5A.5.5 0 0 1 6 20V4a.5.5 0 0 1 .5-.5Z"/><path d="M14.5 3.5v4h4M9 12h6M9 15.5h6"/></svg><span>Loi 2</span></a>
+    <a href="#budget" data-onglet="budget"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18v3"/><rect x="4" y="8" width="16.5" height="11.5" rx="2.5"/><path d="M16 13.75h.01"/></svg><span>Finances</span></a>
     <button type="button" class="nav-installer" data-installer hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11M7.5 10 12 14.5 16.5 10"/><path d="M4.5 15.5v2.5a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-2.5"/></svg><span>Installer l'app</span></button>
     <a href="#donnees" data-onglet="donnees" class="nav-donnees"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7.5" ry="3"/><path d="M4.5 6v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V6"/><path d="M4.5 12v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6"/></svg><span>Données</span></a>
   </nav>
@@ -137,7 +138,6 @@
     <!-- ============ REVENU ============ -->
     <section class="vue" id="v-revenu" aria-labelledby="h-revenu" hidden>
       <header class="tete-page"><a class="retour-resume detail-seul" href="#revenu">Résumé</a><h1 id="h-revenu">Revenu</h1><button type="button" class="bouton-modifier" data-feuille="revenu">Modifier</button></header>
-      <nav class="onglets onglets-section" aria-label="Revenu et impôt"><a href="#revenu" data-section="revenu">Votre revenu</a><a href="#impot" data-section="impot">Impôt</a></nav>
       <div class="segment parcours" id="rv-parcours"></div>
       <div class="choix-milieu pratique-seule detail-seul">
         <label for="rv-milieu">Pratique principale</label>
@@ -240,7 +240,22 @@
           <div class="champs-rapides" id="rv-dj-champs"></div>
         </details>
       </div>
-      <div class="carte detail-seul" id="rv-carte-repertoire" data-sous="actes">
+      <details class="carte carte-repliable detail-seul" id="rv-carte-actes" data-sous="actes">
+        <summary><h2>Ce que rapporte chaque acte</h2><span class="repli-resume" id="rv-actes-resume"></span></summary>
+        <div class="choix-actes"><div class="segment petit" id="rv-actes-lieu"></div><div class="segment petit" id="rv-actes-palier"></div></div>
+        <h3>Par acte</h3>
+        <div class="tableau-defile"><table class="tableau" id="rv-actes-table"></table></div>
+        <h3>À l'heure, selon la durée</h3>
+        <div class="tableau-defile"><table class="tableau" id="rv-actes-heure"></table></div>
+        <p class="aide" id="rv-actes-note"></p>
+      </details>
+      <div class="carte detail-seul" id="rv-carte-offres" data-sous="offres"></div>
+    </section>
+
+        <!-- ============ CODES : le répertoire des actes et les formulaires de la CNESST ============ -->
+    <section class="vue mode-detail" id="v-codes" aria-labelledby="h-codes" hidden>
+      <header class="tete-page"><h1 id="h-codes">Codes de facturation</h1><button type="button" class="bouton-modifier" data-feuille="revenu">Modifier</button></header>
+      <div class="carte" id="rv-carte-repertoire">
         <div class="carte-tete"><h2>Répertoire des actes</h2><span class="carte-sous" id="rep-compte" aria-live="polite"></span></div>
         <p class="aide">GMF-U en établissement, au mode mixte : le tarif de la RAMQ et ce que vous recevez. Cherchez par code ou par mot.</p>
         <div class="rep-recherche">
@@ -251,28 +266,27 @@
         <div class="rep-liste" id="rep-liste"></div>
         <p class="aide" id="rep-source"></p>
       </div>
-      <details class="carte carte-repliable detail-seul" id="rv-carte-actes" data-sous="actes">
-        <summary><h2>Ce que rapporte chaque acte</h2><span class="repli-resume" id="rv-actes-resume"></span></summary>
-        <div class="choix-actes"><div class="segment petit" id="rv-actes-lieu"></div><div class="segment petit" id="rv-actes-palier"></div></div>
-        <h3>Par acte</h3>
-        <div class="tableau-defile"><table class="tableau" id="rv-actes-table"></table></div>
-        <h3>À l'heure, selon la durée</h3>
-        <div class="tableau-defile"><table class="tableau" id="rv-actes-heure"></table></div>
-        <p class="aide" id="rv-actes-note"></p>
-      </details>
-      <details class="carte carte-repliable detail-seul" id="rv-carte-cnesst" data-sous="actes">
+      <details class="carte carte-repliable" id="rv-carte-cnesst">
         <summary><h2>Formulaires de la CNESST</h2><span class="repli-resume" id="rv-cnesst-resume"></span></summary>
         <div class="tableau-defile"><table class="tableau" id="rv-cnesst"></table></div>
         <p class="aide" id="rv-cnesst-note"></p>
       </details>
-      <div class="carte detail-seul" id="rv-carte-offres" data-sous="offres"></div>
-      <div class="carte detail-seul" id="cp-loi2" data-sous="loi2"></div>
     </section>
 
-    <!-- ============ IMPÔT (avec Revenu : « Votre revenu · Impôt ») ============ -->
+    <!-- ============ LOI 2 : le mode composé en première ligne ============ -->
+    <!-- Estimateur (hypothèses, puis montants officiels dès leur publication) · Ce qui change · Documents. -->
+    <section class="vue mode-detail" id="v-loi2" aria-labelledby="h-loi2" hidden>
+      <header class="tete-page"><h1 id="h-loi2">Loi 2</h1><button type="button" class="bouton-modifier" data-feuille="revenu">Modifier</button></header>
+      <div class="onglets" id="l2-onglets"></div>
+      <div class="carte" id="cp-loi2" data-sous="estimateur"></div>
+      <div class="carte" id="l2-regles" data-sous="regles"></div>
+      <div class="carte" id="l2-documents" data-sous="documents"></div>
+    </section>
+
+    <!-- ============ IMPÔT (dans Finances : « Budget · Patrimoine · Impôt ») ============ -->
     <section class="vue" id="v-impot" aria-labelledby="h-impot" hidden>
       <header class="tete-page"><a class="retour-resume detail-seul" href="#impot">Résumé</a><h1 id="h-impot">Impôt 2026</h1><button type="button" class="bouton-modifier" data-feuille="impot">Modifier</button></header>
-      <nav class="onglets onglets-section" aria-label="Revenu et impôt"><a href="#revenu" data-section="revenu">Votre revenu</a><a href="#impot" data-section="impot">Impôt</a></nav>
+      <nav class="onglets onglets-section" aria-label="Finances"><a href="#budget" data-section="budget">Budget</a><a href="#avenir" data-section="avenir">Patrimoine</a><a href="#impot" data-section="impot">Impôt</a></nav>
       <div class="segment parcours" id="im-parcours"></div>
       <div class="segment pratique-seule detail-seul" id="im-mode"></div>
       <div class="hero" id="im-hero"></div>
@@ -319,6 +333,7 @@
     <!-- ============ BUDGET ============ -->
     <section class="vue" id="v-budget" aria-labelledby="h-budget" hidden>
       <header class="tete-page"><a class="retour-resume detail-seul" href="#budget">Résumé</a><h1 id="h-budget">Budget</h1><button type="button" class="bouton-modifier" data-feuille="menage">Famille</button></header>
+      <nav class="onglets onglets-section" aria-label="Finances"><a href="#budget" data-section="budget">Budget</a><a href="#avenir" data-section="avenir">Patrimoine</a><a href="#impot" data-section="impot">Impôt</a></nav>
       <div class="segment parcours" id="bu-parcours"></div>
       <div class="segment detail-seul" id="bu-vue"></div>
       <div class="hero" id="bu-hero"></div>
@@ -411,6 +426,7 @@
     <!-- ============ AVENIR : ÉPARGNE ET VALEUR NETTE ============ -->
     <section class="vue" id="v-avenir" aria-labelledby="h-avenir" hidden>
       <header class="tete-page"><a class="retour-resume detail-seul" href="#avenir">Résumé</a><h1 id="h-avenir">Patrimoine</h1><button type="button" class="bouton-modifier" data-feuille="epargne">Modifier</button></header>
+      <nav class="onglets onglets-section" aria-label="Finances"><a href="#budget" data-section="budget">Budget</a><a href="#avenir" data-section="avenir">Patrimoine</a><a href="#impot" data-section="impot">Impôt</a></nav>
       <div class="segment detail-seul" id="vn-scenario"></div>
       <p class="aide hyp-ligne detail-seul" id="vn-hyp"></p>
       <div class="hero" id="vn-hero"></div>
