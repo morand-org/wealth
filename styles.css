@@ -1280,11 +1280,21 @@ a.tuile:hover { border-color: var(--trait); }
   :root { --largeur-nav: clamp(268px, calc(100vw - 1480px), 380px); }
   .app { grid-template-columns: var(--largeur-nav) minmax(0, 1fr); }
   /* Espacements qui suivent la hauteur de l'écran ; en bas, la place du bandeau Morand (le menu reste entier en haut de page). */
-  .nav { padding: clamp(18px, 3vh, 30px) 22px calc(clamp(14px, 2.5vh, 24px) + 46px); gap: clamp(2px, 0.9vh, 8px); }
+  .nav { padding: clamp(18px, 3vh, 30px) 22px clamp(14px, 2.5vh, 24px); gap: clamp(2px, 0.9vh, 8px); }
   .nav-marque, .nav a.nav-marque { padding-bottom: clamp(14px, 3.6vh, 34px); }
   .nav-sceau, .nav a.nav-marque svg { width: clamp(118px, 19vh, 176px); height: clamp(118px, 19vh, 176px); }
   .nav a { gap: 16px; padding: clamp(9px, 1.6vh, 15px) 18px; font-size: 1.16rem; border-radius: 14px; }
   .nav a svg { width: 25px; height: 25px; }
   .toast { left: var(--largeur-nav); }
   .vue { column-gap: 22px; row-gap: 20px; }
+}
+
+/* Ordinateur : le bandeau Morand reste en haut et la colonne de gauche reste en place pendant le défilement ;
+   seul le contenu de la page défile, sous le bandeau. */
+@media (min-width: 960px) {
+  :root { --haut-bande: 54px; }
+  .bandeau-morand { position: sticky; top: 0; z-index: 40; height: var(--haut-bande); margin: 0; padding: 0 32px 12px; align-items: flex-end;
+    border-bottom: 0; background: linear-gradient(var(--encre), var(--encre)) no-repeat bottom center / calc(100% - 64px) 1px, var(--fond); }
+  .nav { position: sticky; top: var(--haut-bande); height: calc(100vh - var(--haut-bande)); height: calc(100dvh - var(--haut-bande)); overflow-y: auto; overscroll-behavior: contain; }
+  html { scroll-padding-top: calc(var(--haut-bande) + 24px); }
 }
