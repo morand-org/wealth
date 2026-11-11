@@ -615,10 +615,17 @@ verifier("transition incorporée : une seule déclaration paie davantage, et gar
 {
   const g = C.revenuGmfu({ ...rev, inscritsDebut: 1000, partVulnerable: 30 });
   verifier("Loi 2 : parts de l'entente 50-30-20, aucun montant officiel publié", C.COMPOSE.parts.capitation === 0.5 && C.COMPOSE.parts.actes === 0.3 && C.COMPOSE.parts.horaire === 0.2 && C.COMPOSE.officiel === null);
-  const p = { capitation: 100, suppVulnerable: 20, pctActes: 30, tauxHoraire: 50 }, x = C.revenuCompose(g, p);
-  verifier("Loi 2 : capitation, actes et taux horaire selon les hypothèses", proche(x.capitation, x.inscrits * 100 + x.vulnerables * 20, 1e-6)
-    && proche(x.actes, g.acte.visites * 0.3, 1e-6) && proche(x.horaire, g.heures * 50, 1e-6) && proche(x.total, x.capitation + x.actes + x.horaire + x.restent, 1e-6), x);
-  const cible = 250000, cal = C.calibrerCompose(g, cible), y = C.revenuCompose(g, cal);
+  // Document-cadre (FMOQ, résumé-synthèse d'octobre 2026) : capitation des associés et des affiliés, visite à tarif unique,
+  // heures directes et indirectes, majoration des nouveaux médecins sur 500 patients, garantie de revenu.
+  const p = { capitation: 100, suppVulnerable: 20, affilies: 50, capitationAffilie: 40, tarifVisite: 30, tauxHoraire: 50, heuresIndirectes: 4 };
+  const x = C.revenuCompose(g, p, { semaines: 44 });
+  verifier("Loi 2 : capitation (associés, vulnérables, affiliés), visites à tarif unique, heures directes et indirectes",
+    proche(x.capitation, x.associes * 100 + x.vulnerables * 20 + 50 * 40, 1e-6) && proche(x.actes, g.nbVisites * 30, 1e-6)
+    && proche(x.horaire, (g.heures + 4 * 44) * 50, 1e-6) && proche(x.total, x.capitation + x.actes + x.horaire + x.restent, 1e-6), x);
+  const nouveau = C.revenuCompose({ ...g, inscritsDepart: 0, inscritsFin: 1200, vulnerablesFin: 0 }, { capitation: 100, majorationNouveau: 20 }, { nouveau: true });
+  verifier("Loi 2 : nouveau médecin, majoration de la capitation sur ses 500 premiers patients", proche(nouveau.majoration, 500 * 100 * 0.2, 1e-6), nouveau.majoration);
+  verifier("Loi 2 : garantie de revenu la première année, la différence avec l'ancien mode", C.garantieCompose(180000, 200000) === 20000 && C.garantieCompose(210000, 200000) === 0);
+  const cible = 250000, o = { semaines: 44, heuresIndirectes: 3 }, cal = C.calibrerCompose(g, cible, o), y = C.revenuCompose(g, cal, o);
   verifier("Loi 2 : calibré sur un revenu cible, il le redonne, réparti 50-30-20", proche(y.total, cible, 0.01) && proche(y.parts.capitation, 0.5, 1e-9)
     && proche(y.parts.actes, 0.3, 1e-9) && proche(y.parts.horaire, 0.2, 1e-9), { total: y.total, parts: y.parts });
   verifier("Loi 2 : sans hypothèse, rien de la première ligne n'est compté", C.revenuCompose(g, {}).premiereLigne === 0);

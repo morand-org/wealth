@@ -495,47 +495,69 @@
   }
 
   /* ============================================================
-     MODE COMPOSÉ (Loi 2) : capitation 50 %, actes 30 %, taux horaire 20 % de l'enveloppe de la première ligne
-     (entente de principe entre le gouvernement et la FMOQ du 10 décembre 2025, version vulgarisée de la FMOQ ;
-     infolettre de la FMOQ du 30 avril 2026 : « modèle combiné 50-30-20 », option A ou B du taux horaire à décider).
-     Les montants (capitation par patient, part du tarif des actes, taux horaire) ne sont pas publiés au
-     11 novembre 2026 : COMPOSE.officiel reste null et la page « Loi 2 » calcule avec les hypothèses de la personne.
-     À la publication : remplir COMPOSE.officiel (montants, date, source), puis brancher le 4e mode (voir README).
+     MODE COMPOSÉ (Loi 2) en première ligne : trois composantes cumulatives, capitation 50 %, actes 30 %, composante
+     horaire 20 %. Sources : entente de principe gouvernement-FMOQ du 10 décembre 2025 ; FMOQ, « Modèle de rémunération
+     composé en première ligne : résumé-synthèse », octobre 2026 (document-cadre).
+     Ce que dit le document-cadre :
+     - Capitation pour chaque patient associé (l'ancienne inscription individuelle), selon le niveau de vulnérabilité
+       (4 groupes), l'âge et le sexe, plus un supplément pour certaines conditions de santé mentale ou de déficience
+       intellectuelle ; versée aux deux semaines. Patients affiliés (l'ancienne inscription collective) : un tarif fixe,
+       non pondéré, versé chaque mois au groupe de médecins.
+     - Actes : visites (en personne ou en téléconsultation, complexes, à domicile, de prise en charge, en groupe) et
+       certains avis ; leur tarif ne dépendra plus de l'âge, de la vulnérabilité ni du nombre d'inscrits.
+     - Composante horaire : soins directs et indirects (coordination, résultats, documentation, renouvellements,
+       échanges avec les proches), au plus 14 h par jour ; banque d'heures administratives selon la patientèle.
+     - Transition : garantie de revenu de 12 mois (la différence avec l'ancien mode, à prestation égale) ; majoration
+       de la capitation pendant 24 mois pour les nouveaux médecins (500 premiers patients la 1re année, 750 la 2e) ;
+       exclusion au choix à 60 ans et plus, et pour les médecins enseignants en GMF-U ; activités spécifiques exclues
+       (aide médicale à mourir, constat de décès, perte d'autonomie, musculosquelettique, IVG, psychothérapie, CNESST,
+       entre autres), payées comme aujourd'hui. Entrée en vigueur : environ 18 mois à compter de juin 2026.
+     - Les montants (« quantums ») restent à déterminer : COMPOSE.officiel reste null ; la page « Loi 2 » calcule avec
+       les hypothèses de la personne. À la publication : remplir COMPOSE.officiel (montants, date, source).
      ============================================================ */
   const COMPOSE = {
     parts: { capitation: 0.5, actes: 0.3, horaire: 0.2 },
-    source: "Entente de principe FMOQ-gouvernement du 10 décembre 2025 (version vulgarisée) ; infolettre FMOQ du 30 avril 2026",
-    // { capitation: $ par patient inscrit par année, suppVulnerable: $ de plus par patient vulnérable, pctActes: % du tarif,
-    //   tauxHoraire: $ par heure, date: "AAAA-MM-JJ", source: "…" }
+    heuresMaxJour: 14, majorationNouveau: { an1: 500, an2: 750 }, garantieMois: 12,
+    source: "FMOQ, Modèle de rémunération composé en première ligne : résumé-synthèse (octobre 2026) ; entente de principe du 10 décembre 2025",
+    // { capitation, suppVulnerable, capitationAffilie, tarifVisite, tauxHoraire, majorationNouveau, date: "AAAA-MM-JJ", source }
     officiel: null,
   };
+  const n0 = v => Math.max(0, Number.isFinite(+v) ? +v : 0);
   /* Revenu d'une année au mode composé, à partir du calcul du revenu (revenuGmfu) et de paramètres p :
-     capitation (inscrits moyens de l'année), actes (les visites au tarif de l'entente × la part payée), taux horaire (heures
-     en clinique). Hypothèse de l'app, en attendant les règles : les forfaits d'inscription, de volume et GMF sont remplacés
-     par la capitation ; les activités en établissement, la compensation des frais de cabinet et les autres revenus restent. */
-  function revenuCompose(g, p = {}) {
-    const n = v => Math.max(0, Number.isFinite(+v) ? +v : 0);
-    const inscrits = (n(g.inscritsDepart) + n(g.inscritsFin)) / 2;
-    const vulnerables = n(g.inscritsFin) > 0 ? n(g.vulnerablesFin) * inscrits / n(g.inscritsFin) : 0;
-    const a = g.acte || {}, valeurActes = n(a.visites);
-    const capitation = inscrits * n(p.capitation) + vulnerables * n(p.suppVulnerable);
-    const actes = valeurActes * n(p.pctActes) / 100, horaire = n(g.heures) * n(p.tauxHoraire);
-    const restent = n(a.activites) + n(a.compensation) + n(a.autres) + n(a.perDiem) + n(a.polyvalence);
+     - capitation : patients associés (inscrits moyens de l'année) × capitation, plus un supplément par patient vulnérable,
+       plus les patients affiliés × leur tarif fixe ; majorée pour un nouveau médecin sur ses 500 premiers patients ;
+     - actes : chaque visite de l'année au tarif moyen d'une visite (un seul tarif, sans égard à l'âge ni à la vulnérabilité) ;
+     - horaire : heures en clinique plus heures de soins indirects, au taux horaire.
+     o : { semaines, nouveau (première année de prise en charge) }. Hypothèse de l'app, en attendant les règles : la
+     capitation remplace les forfaits d'inscription, de volume et GMF ; le reste (activités en établissement, demi-per diem,
+     compensation des frais de cabinet, autres revenus, activités exclues) ne change pas. */
+  function revenuCompose(g, p = {}, o = {}) {
+    const associes = (n0(g.inscritsDepart) + n0(g.inscritsFin)) / 2;
+    const vulnerables = n0(g.inscritsFin) > 0 ? n0(g.vulnerablesFin) * associes / n0(g.inscritsFin) : 0;
+    const affilies = n0(p.affilies), majores = o.nouveau ? Math.min(associes, COMPOSE.majorationNouveau.an1) : 0;
+    const majoration = majores * n0(p.capitation) * n0(p.majorationNouveau) / 100;
+    const capitation = associes * n0(p.capitation) + vulnerables * n0(p.suppVulnerable) + affilies * n0(p.capitationAffilie) + majoration;
+    const visites = n0(g.nbVisites), actes = visites * n0(p.tarifVisite);
+    const indirectes = n0(p.heuresIndirectes) * n0(o.semaines), heures = n0(g.heures) + indirectes, horaire = heures * n0(p.tauxHoraire);
+    const a = g.acte || {}, restent = n0(a.activites) + n0(a.compensation) + n0(a.autres) + n0(a.perDiem) + n0(a.polyvalence);
     const premiereLigne = capitation + actes + horaire, total = premiereLigne + restent;
     const part = x => premiereLigne > 0 ? x / premiereLigne : 0;
-    return { inscrits, vulnerables, valeurActes, heures: n(g.heures), capitation, actes, horaire, restent, premiereLigne, total,
-      parts: { capitation: part(capitation), actes: part(actes), horaire: part(horaire) } };
+    return { associes, vulnerables, affilies, majoration, visites, heuresClinique: n0(g.heures), indirectes, heures, capitation, actes, horaire, restent,
+      premiereLigne, total, parts: { capitation: part(capitation), actes: part(actes), horaire: part(horaire) } };
   }
   /* Hypothèses de départ : celles qui redonnent un revenu cible (par exemple le brut du mode actuel), réparti selon les
      parts de l'entente. Ce sont des hypothèses calculées, pas des montants officiels. */
-  function calibrerCompose(g, cible, parts = COMPOSE.parts) {
-    const r = revenuCompose(g, {}), pl = Math.max(0, (+cible || 0) - r.restent);
+  function calibrerCompose(g, cible, o = {}, parts = COMPOSE.parts) {
+    const r = revenuCompose(g, { heuresIndirectes: o.heuresIndirectes }, o), pl = Math.max(0, (+cible || 0) - r.restent);
     return {
-      capitation: r.inscrits > 0 ? pl * parts.capitation / r.inscrits : 0, suppVulnerable: 0,
-      pctActes: r.valeurActes > 0 ? pl * parts.actes / r.valeurActes * 100 : 0,
-      tauxHoraire: r.heures > 0 ? pl * parts.horaire / r.heures : 0,
+      capitation: r.associes > 0 ? pl * parts.capitation / r.associes : 0, suppVulnerable: 0, affilies: 0, capitationAffilie: 0, majorationNouveau: 0,
+      tarifVisite: r.visites > 0 ? pl * parts.actes / r.visites : 0,
+      tauxHoraire: r.heures > 0 ? pl * parts.horaire / r.heures : 0, heuresIndirectes: n0(o.heuresIndirectes),
     };
   }
+  /* Garantie de revenu de 12 mois (document-cadre) : si le mode composé paie moins que l'ancien mode, à prestation égale,
+     la différence est versée la première année. */
+  const garantieCompose = (compose, ancien) => Math.max(0, n0(ancien) - n0(compose));
 
   /* ============================================================
      COMPARER LES ACTES : ce que rapporte chaque acte selon le mode, l'intervention de supervision ou
@@ -1299,7 +1321,7 @@
     return { plafondQc, admissibleQc, taux, creditQc: admissibleQc * taux, plafondFed, deduction };
   }
 
-  const Calc = { COMPOSE, revenuCompose, calibrerCompose, CELIAPP, celiappParAn, ACTES, CNESST, valeurActes, supervisionOuVisites, demiJourneeSupervision, demiJourneeActes, P2026, P2027, parametres, utiliserAnnee, avecAnnee, parametresActifs: () => PAR, VISITES, PRISE_EN_CHARGE, TARIFS_DEFAUT, TARIFS_LIEU, MONTANTS_LIEU, RAMQ, PCT_AU_DELA, PCT_GARDE, GARDE_MAX_94, SUPERVISION_MAX_APRES_MIDI, partAssiduite, lieuTarifs, montantsLieu, montantsVolume, tauxPolyvalence, SEUILS_POLYVALENCE, ACTIVITES_POLYVALENTES, compensationCabinet, tarifVisite, revenuGmfu, joursActivite, revenuActivite, impotParticulier, impotSalarie, impotMixte, FMRQ, salaireResident, transfertsConjoints, prestationsFamille, primeMedicaments, tauxMarginal,
+  const Calc = { COMPOSE, revenuCompose, calibrerCompose, garantieCompose, CELIAPP, celiappParAn, ACTES, CNESST, valeurActes, supervisionOuVisites, demiJourneeSupervision, demiJourneeActes, P2026, P2027, parametres, utiliserAnnee, avecAnnee, parametresActifs: () => PAR, VISITES, PRISE_EN_CHARGE, TARIFS_DEFAUT, TARIFS_LIEU, MONTANTS_LIEU, RAMQ, PCT_AU_DELA, PCT_GARDE, GARDE_MAX_94, SUPERVISION_MAX_APRES_MIDI, partAssiduite, lieuTarifs, montantsLieu, montantsVolume, tauxPolyvalence, SEUILS_POLYVALENCE, ACTIVITES_POLYVALENTES, compensationCabinet, tarifVisite, revenuGmfu, joursActivite, revenuActivite, impotParticulier, impotSalarie, impotMixte, FMRQ, salaireResident, transfertsConjoints, prestationsFamille, primeMedicaments, tauxMarginal,
     remboursementReer, impotDividendes, impotSociete, impotSalaireEtSociete, comparerSociete, simulerDettes, interetsEtudesPeriodes, tauxReel, tauxMensuel, moisRestants, paiementPour, projeterReee, projeterValeurNette, rendementProfil, fraisGarde };
   if (typeof module !== "undefined" && module.exports) module.exports = Calc;
   else racine.Calc = Calc;

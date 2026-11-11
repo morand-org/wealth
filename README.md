@@ -335,12 +335,19 @@ côte à côte (ci-dessus). Les anciennes adresses `#revenu/actes` et
 (pourcentage de la facturation et montant fixe). Le mode de rémunération
 composé de la première ligne a fait l'objet d'une entente finale entre la
 FMOQ et le gouvernement (13 août 2026) ; ses montants restent à publier.
-L'onglet **Loi 2** de Comparer est prêt : capitation 50 %, actes 30 %, taux
-horaire 20 % (entente de principe du 10 décembre 2025, version vulgarisée de
-la FMOQ ; infolettre de la FMOQ du 30 avril 2026). En attendant les montants,
-le calcul suit vos hypothèses (capitation par patient, supplément par patient
-vulnérable, part du tarif des actes, taux horaire), toujours marquées
-« hypothèse » ; « Partir de mon revenu actuel » les calcule pour redonner le
+L'onglet **Loi 2** de Comparer suit le document-cadre (FMOQ, « Modèle de
+rémunération composé en première ligne : résumé-synthèse », octobre 2026) :
+capitation 50 % (patients associés selon la vulnérabilité, l'âge et le sexe ;
+patients affiliés à tarif fixe), actes 30 % (un tarif par visite, sans égard
+à l'âge, à la vulnérabilité ni au nombre d'inscrits), composante horaire 20 %
+(soins directs et indirects, au plus 14 h par jour) ; garantie de revenu de
+12 mois ; majoration de la capitation des nouveaux médecins (500 premiers
+patients la 1re année, 750 la 2e) ; exclusion au choix des médecins
+enseignants en GMF-U et à 60 ans et plus ; activités spécifiques exclues. Les
+montants restent à fixer : le calcul suit vos hypothèses (capitation par
+patient associé, supplément par patient vulnérable, patients affiliés et leur
+tarif, tarif moyen d'une visite, taux horaire, heures de soins indirects,
+majoration des nouveaux médecins), toujours marquées « hypothèse » ; « Partir de mon revenu actuel » les calcule pour redonner le
 brut du mode actuel, réparti 50-30-20. Hypothèse de l'app : la capitation
 remplace les forfaits d'inscription, de volume et GMF ; le reste ne change pas.
 

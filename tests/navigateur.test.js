@@ -1613,15 +1613,22 @@ async function loi2(b, base) {
     vu: !!document.getElementById("cp-loi2").offsetParent, onglet: !!document.querySelector('#cp-onglets [data-v="loi2"], #cp-onglets button[aria-pressed="true"]'),
     debord: document.documentElement.scrollWidth > document.documentElement.clientWidth }));
   const v0 = await lire();
-  verifier("Loi 2 : onglet de Comparer ; sans montant officiel, la page le dit et attend des hypothèses", v0.vu && v0.statut.includes("pas encore publiés") && v0.res.includes("Inscrivez vos hypothèses") && !v0.debord, v0);
+  verifier("Loi 2 : onglet de Comparer ; architecture du document-cadre, montants non fixés, la page attend des hypothèses", v0.vu && v0.statut.includes("document-cadre") && v0.statut.includes("pas ses montants")
+    && v0.res.includes("Inscrivez vos hypothèses") && !v0.debord, v0);
+  verifier("Loi 2 : « Ce que prévoit le document-cadre » : associés et affiliés, garantie de 12 mois, exclusion des enseignants en GMF-U",
+    await p.evaluate(() => { const t = document.getElementById("loi2-connu").textContent; return t.includes("affiliés") && t.includes("12 mois") && t.includes("enseignant en GMF-U") && t.includes("14 h"); }));
   await p.click("#loi2-calibrer"); await p.waitForTimeout(300);
-  const cal = await p.evaluate(() => { const R = window.Wealthnord.resultats(), S = window.Wealthnord.etat(), x = window.Calc.revenuCompose(R.rev, S.loi2);
+  const cal = await p.evaluate(() => { const R = window.Wealthnord.resultats(), S = window.Wealthnord.etat(), x = window.Calc.revenuCompose(R.rev, S.loi2, { semaines: S.revenu.semaines, nouveau: S.revenu.annee === "premiere" });
     return { total: x.total, cible: R.rev[R.mode].total, parts: x.parts, texte: document.getElementById("loi2-resultat").textContent }; });
   verifier("Loi 2 : « Partir de mon revenu actuel » redonne le brut du mode actuel, réparti 50-30-20, marqué « hypothèse »",
     Math.abs(cal.total - cal.cible) < 20 && Math.abs(cal.parts.capitation - 0.5) < 0.001 && Math.abs(cal.parts.actes - 0.3) < 0.001 && cal.texte.includes("hypothèse"), cal);
   await p.fill("#rapide-loi2-tauxHoraire", "0"); await p.waitForTimeout(400);
-  const zero = await p.evaluate(() => ({ h: window.Wealthnord.etat().loi2.tauxHoraire, texte: document.getElementById("loi2-resultat").textContent }));
-  verifier("Loi 2 : une hypothèse tapée change le résultat", zero.h === 0 && !/Taux horaire[^$]*[1-9][\d\s\u00a0]*\$/.test(zero.texte.split("Brut")[0].split("Taux horaire")[1] || ""), zero.h);
+  const zero = await p.evaluate(() => { const S = window.Wealthnord.etat(), R = window.Wealthnord.resultats();
+    return { h: S.loi2.tauxHoraire, horaire: window.Calc.revenuCompose(R.rev, S.loi2, { semaines: S.revenu.semaines }).horaire, texte: document.getElementById("loi2-resultat").textContent }; });
+  verifier("Loi 2 : une hypothèse tapée change le résultat", zero.h === 0 && zero.horaire === 0 && zero.texte.includes("Composante horaire"), zero);
+  await p.fill("#rapide-loi2-tauxHoraire", "1"); await p.fill("#rapide-loi2-tarifVisite", "1"); await p.waitForTimeout(400);
+  const garantie = await p.evaluate(() => document.getElementById("loi2-resultat").textContent);
+  verifier("Loi 2 : sous l'ancien mode, la garantie de revenu de 12 mois s'affiche", garantie.includes("Garantie de revenu"), garantie.slice(0, 200));
   await p.click("#loi2-effacer"); await p.waitForTimeout(300);
   verifier("Loi 2 : « Effacer mes hypothèses » revient à l'attente", (await lire()).res.includes("Inscrivez vos hypothèses"));
   verifier("Loi 2 : aucune erreur", erreurs.length === 0, erreurs);
