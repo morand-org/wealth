@@ -72,7 +72,7 @@ Lancer l'app : `python3 -m http.server 8765`, puis `http://localhost:8765/`.
 L'état est `window.Wealthnord.etat()`, les résultats
 `window.Wealthnord.resultats()`. Dans un navigateur automatisé, posez
 `localStorage["wm.assistant"] = "1"` et `sessionStorage["wm.ouverture"] = "1"`
-avant le chargement pour sauter l'assistant et l'écran d'ouverture.
+avant le chargement pour sauter l'assistant (Wealth n'a plus d'écran d'ouverture).
 
 ## Conventions
 

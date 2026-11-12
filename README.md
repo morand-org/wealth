@@ -440,7 +440,7 @@ propres clés de stockage (`boussole.v1`, `wm.*`, `wealthnord.theme`).
 | `js/app.js` | État, calculs du ménage, écrans et événements ; sauvegarde et restauration |
 | `js/verrou.js` | Verrou par phrase de passe : chiffrement des données et des sauvegardes |
 | `js/rapport.js` | Rapport PDF, fiche d'une page et sommaire pour le comptable |
-| `js/demarrage.js` | Thème, écran d'ouverture et écran du verrou, avant l'affichage |
+| `js/demarrage.js` | Thème et écran du verrou, avant l'affichage (l'écran d'ouverture est sur l'accueil de Morand) |
 | `tests/` | Tests des calculs et du navigateur |
 | `package.json`, `eslint.config.js`, `.github/` | Outils de vérification (rien à installer pour utiliser l'app) |
 | `manifest.webmanifest`, `sw.js`, `icone.svg`, `icones/` | Application installable (PWA), hors ligne ; icône : le médaillon d'or (ronde et transparente autour ; plein cadre pour Android, le médaillon dans la zone sûre ; opaque pour l'iPhone) |

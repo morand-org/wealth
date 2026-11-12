@@ -142,27 +142,6 @@ td, .chiffre, .hero-valeur, .tuile-valeur, .rangee-valeur { font-variant-numeric
 .barre-haut { gap: 10px; }
 .barre-haut .marque { display: flex; flex: 1 1 auto; max-width: 440px; gap: clamp(9px, 2.8vw, 13px); }
 
-/* Écran d'ouverture : un seul dessin au centre, copié dans le sceau
-   (cèdre, balance, rose des vents, cerf, arbre, lion). Le sceau ne bouge pas.
-   Même séquence au clic sur le logo. Ne bloque pas les clics. */
-.ouverture { display: none; }
-.avec-ouverture .ouverture,
-.ouverture.joue {
-  position: fixed; inset: 0; z-index: 100; display: grid; place-items: center;
-  background: var(--fond); color: var(--marque); pointer-events: none;
-}
-.ouverture.joue { animation: ouverture-fin 0.4s ease 0.86s forwards; }
-.ouverture-sceau { width: min(56vw, 230px); height: min(56vw, 230px); }
-/* Avant que le script ne lance la séquence, le fond couvre la page mais aucun sceau ne s'affiche : sans cela, le premier
-   dessin restait figé un instant, puis disparaissait et revenait au début de l'animation. */
-.avec-ouverture .ouverture:not(.joue) .ouverture-sceau { visibility: hidden; }
-.ouverture.joue .ouverture-sceau { animation: ouverture-sceau 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-@keyframes ouverture-fin { to { opacity: 0; visibility: hidden; } }
-@keyframes ouverture-sceau { from { opacity: 0; transform: scale(0.94); } }
-@media (prefers-reduced-motion: reduce) {
-  .ouverture.joue { animation: ouverture-fin 0.2s ease 0.2s forwards; }
-  .ouverture.joue .ouverture-sceau { animation: none; }
-}
 /* Verrou : tant que les données chiffrées ne sont pas ouvertes, l'app reste cachée. */
 .verrou { display: none; }
 .verrouille .barre-haut, .verrouille .barre-outils, .verrouille .app, .verrouille .saut { display: none; }
@@ -762,7 +741,7 @@ a.tuile:hover { border-color: var(--trait); }
   .carte-tete, .carte h3, .carte h4 { break-after: avoid; }
   .tuiles { grid-template-columns: repeat(4, 1fr); }
   .entete-impression { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #d9d7cf; padding-bottom: 8px; margin-bottom: 10px; font-size: 9pt; color: #6f6d66; }
-  .ouverture { display: none !important; }
+
   .marque-imp { display: flex; align-items: center; gap: 8px; color: #b48a4a; }
   .imp-arbre { width: 26px; height: 20px; }
   .imp-nom { width: 138px; height: 9px; }
@@ -1165,9 +1144,9 @@ a.tuile:hover { border-color: var(--trait); }
    clair. Le disque prend la couleur de --sceau-fond, transparent sans elle (thème clair, rapport). */
 .sceau-fond { fill: var(--sceau-fond, none); }
 @media screen and (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) :is(.nav-sceau, .verrou-sceau, .as-sceau, .ouverture-sceau) { --sceau-fond: #fff; color: #b48a4a; }
+  :root:not([data-theme="light"]) :is(.nav-sceau, .verrou-sceau, .as-sceau) { --sceau-fond: #fff; color: #b48a4a; }
 }
-:root[data-theme="dark"] :is(.nav-sceau, .verrou-sceau, .as-sceau, .ouverture-sceau) { --sceau-fond: #fff; color: #b48a4a; }
+:root[data-theme="dark"] :is(.nav-sceau, .verrou-sceau, .as-sceau) { --sceau-fond: #fff; color: #b48a4a; }
 .tableau-defile[tabindex]:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
 
 /* ============================================================

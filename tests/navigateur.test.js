@@ -7,7 +7,6 @@ const http = require("http");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const crypto = require("crypto");
 const { chromium } = require("playwright");
 
 const RACINE = path.join(__dirname, "..");
@@ -304,47 +303,22 @@ async function logo(b, base) {
   const { ctx, p, erreurs } = await ouvrir(b, base, { page: "budget" });
   verifier("en-tête : le sceau du lion et le nom", await p.evaluate(() => document.querySelector(".barre-haut .marque-ico use").getAttribute("href") === "#wm-sceau" && document.querySelector(".barre-haut .marque-texte").textContent === "Wealth Morand"));
   verifier("nom : une étoile entre Wealth et Morand", await p.evaluate(() => !!document.querySelector("#wm-nom .etoile")));
-  verifier("ouverture : un seul dessin au centre", await p.evaluate(() => document.querySelectorAll(".ouverture .ouverture-centre").length === 1
-    && document.querySelector(".ouverture-centre").getAttribute("data-motif") === "#wm-g-cedre"));
-  const empreinte = buf => crypto.createHash("sha256").update(buf).digest("hex");
-  // L'observation commence avant le clic : le premier dessin (le cèdre) peut ne durer qu'un instant.
-  const pendantPromesse = p.evaluate(() => new Promise(resolve => {
-    const vus = [];
-    const echantillon = () => {
-      const c = document.querySelector(".ouverture-centre");
-      vus.push({ motif: c && c.getAttribute("data-motif"), tag: c && c.tagName, centres: document.querySelectorAll(".ouverture-centre").length, chemins: c ? c.querySelectorAll("path").length : 0,
-        joue: document.querySelector(".ouverture").classList.contains("joue") });
-    };
-    echantillon();
-    const id = setInterval(echantillon, 70);
-    setTimeout(() => { clearInterval(id); resolve({ joue: document.querySelector(".ouverture").classList.contains("joue"), vus }); }, 800);
-  }));
-  await p.click(".barre-haut a.marque");
-  const dessin1 = empreinte(await p.locator(".ouverture-sceau").screenshot());
-  await p.waitForTimeout(280);
-  const dessin2 = empreinte(await p.locator(".ouverture-sceau").screenshot());
-  verifier("logo : le dessin affiché change", dessin1 !== dessin2);
-  const pendant = await pendantPromesse;
-  const suite = ["#wm-g-cedre", "#wm-g-balance", "#wm-g-boussole", "#wm-g-cerf", "#wm-g-racines", "#wm-g-lion"];
-  const enJeu = pendant.vus.filter(v => v.joue);
-  const ordre = enJeu.map(v => v.motif).filter((h, i, a) => h !== a[i - 1]);
-  const unSeul = enJeu.length > 0 && enJeu.every(v => v.centres === 1 && v.tag === "g" && v.chemins === 1);
-  verifier("logo : les dessins se suivent, un à la fois", pendant.joue && unSeul && ordre.join() === suite.join(), { ordre, unSeul });
-  await p.waitForTimeout(900);
-  const apres = await p.evaluate(() => ({ joue: document.querySelector(".ouverture").classList.contains("joue"), page: location.hash, motif: document.querySelector(".ouverture-centre").getAttribute("data-motif") }));
-  verifier("logo : on termine sur le lion, puis l'accueil", !apres.joue && apres.page === "#apercu" && apres.motif === "#wm-g-lion", apres);
+  // Wealth n'a plus d'écran d'ouverture (il est sur l'accueil de Morand) : le logo mène simplement à l'aperçu.
+  verifier("ouverture : plus d'écran d'ouverture dans Wealth", await p.evaluate(() => !document.querySelector(".ouverture") && !document.documentElement.classList.contains("avec-ouverture")));
+  await p.click(".barre-haut a.marque"); await p.waitForTimeout(300);
+  verifier("logo : mène à l'aperçu", await p.evaluate(() => location.hash) === "#apercu");
   // Thème sombre : l'intérieur du sceau reste blanc, avec l'or du thème clair ; rien ne change en thème clair ni dans le rapport.
   const fond = await p.evaluate(() => {
     const r = document.documentElement, avant = r.getAttribute("data-theme");
-    const lire = () => [".nav-sceau", ".verrou-sceau", ".as-sceau", ".ouverture-sceau"].map(x => getComputedStyle(document.querySelector(x)).getPropertyValue("--sceau-fond").trim() || "aucun");
+    const lire = () => [".nav-sceau", ".verrou-sceau", ".as-sceau"].map(x => getComputedStyle(document.querySelector(x)).getPropertyValue("--sceau-fond").trim() || "aucun");
     r.setAttribute("data-theme", "light"); const clair = lire();
     r.setAttribute("data-theme", "dark"); const sombre = lire(), couleur = getComputedStyle(document.querySelector(".nav-sceau")).color;
     if (avant === null) r.removeAttribute("data-theme"); else r.setAttribute("data-theme", avant);
-    return { clair, sombre, couleur, sceau: !!document.querySelector('#wm-sceau use[href="#wm-g-fond"]'), ouverture: !!document.querySelector('.ouverture-sceau use[href="#wm-g-fond"]'),
+    return { clair, sombre, couleur, sceau: !!document.querySelector('#wm-sceau use[href="#wm-g-fond"]'),
       rapport: !document.querySelector('#wm-sceau-i use[href="#wm-g-fond"]') };
   });
   verifier("logo : en thème sombre, l'intérieur du sceau reste blanc, avec l'or du thème clair ; rien ne change en thème clair ni dans le rapport",
-    fond.clair.every(f => f === "aucun") && fond.sombre.every(f => f === "#fff") && fond.couleur === "rgb(180, 138, 74)" && fond.sceau && fond.ouverture && fond.rapport, fond);
+    fond.clair.every(f => f === "aucun") && fond.sombre.every(f => f === "#fff") && fond.couleur === "rgb(180, 138, 74)" && fond.sceau && fond.rapport, fond);
   // Ordinateur : les pixels du sceau de la colonne. Thème clair : l'intérieur comme avant (clair, pas noir) ; sombre : blanc, coins sombres.
   const ordi = await b.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: "block" }), q = await ordi.newPage();
   await ordi.addInitScript(() => { try { localStorage.setItem("wm.assistant", "1"); sessionStorage.setItem("wm.ouverture", "1"); } catch (e) { /* stockage indisponible */ } });
