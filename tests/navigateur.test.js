@@ -1356,6 +1356,55 @@ async function demarrageGmfu(b, base) {
   verifier("GMF-U : aucune erreur", erreurs.length === 0, erreurs);
   await ctx.close();
 }
+/* 35 c. Assistant et estimations fiables : en clinique, la part remise à la clinique est exigée, même au chemin rapide
+   (sans elle, le net est surestimé) ; le territoire désigné demande sa majoration ; le revenu par jour d'une activité
+   se saisit (valeur de départ sans source) ; les jours d'activité qui remplacent la clinique retirent des semaines. */
+async function assistantEstimations(b, base) {
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
+  const p = await ctx.newPage(), erreurs = [];
+  p.on("pageerror", e => erreurs.push(String(e)));
+  await ctx.addInitScript(() => { try { sessionStorage.setItem("wm.ouverture", "1"); } catch (e) { /* stockage indisponible */ } });
+  await p.goto(`${base}/index.html`); await pret(p);
+  await p.waitForSelector("#assistant[open]", { timeout: 5000 });
+  const suivant = () => p.click("#as-suivant"), message = () => p.textContent("#as-message");
+  // Chemin rapide en clinique, en territoire désigné.
+  await p.click("#as-rapide");
+  await p.check('input[name="as-milieu"][value="clinique"]'); await p.check("#as-territoire"); await suivant();
+  const sansMajoration = await message();
+  await p.fill("#as-majoration", "15"); await suivant();
+  await p.fill("#as-patientsParDJ", "12"); await suivant();
+  const sansFrais = await message();
+  await p.fill("#as-fraisPct", "30"); await suivant(); await p.waitForTimeout(400);
+  const rapide = await p.evaluate(() => { const r = window.Wealthnord.etat().revenu; return { frais: r.fraisCabinetPct, maj: r.majorationPct, semaines: r.semaines }; });
+  verifier("estimations : la majoration du territoire désigné est exigée, puis gardée", sansMajoration.includes("majoration de votre territoire") && rapide.maj === 15, { sansMajoration, rapide });
+  verifier("estimations : au chemin rapide en clinique, la part remise à la clinique est exigée, puis gardée", sansFrais.includes("remise à la clinique") && rapide.frais === 30, { sansFrais, rapide });
+  // Portrait complet : hospitalisation 4 jours par mois à la place de la clinique (8 demi-journées : 4 jours par semaine).
+  await p.evaluate(() => document.getElementById("ap-assistant").click()); await p.waitForSelector("#assistant[open]", { timeout: 5000 });
+  await suivant(); await p.check('input[name="as-famille"][value="seul"]'); await suivant(); await suivant();
+  await p.check('input[name="as-milieu"][value="clinique"]'); await suivant();
+  await p.fill("#as-patientsParDJ", "12"); await p.fill("#as-vacances", "6"); await suivant();
+  await p.fill("#as-inscrits", "1000"); await suivant();
+  const sansFraisComplet = await message();
+  await p.fill("#as-fraisPct", "0"); await suivant();
+  await p.check("#as-act_hospitalisation");
+  const defaut = await p.inputValue("#as-actJ_hospitalisation"), aide = await p.textContent("#as-corps");
+  await p.fill("#as-actN_hospitalisation", "4"); await p.fill("#as-actJ_hospitalisation", "");
+  await suivant(); const sansJour = await message();
+  await p.fill("#as-actJ_hospitalisation", "1000"); await p.check("#as-actR_hospitalisation");
+  const calcul = await p.textContent("#as-corps .as-calcul");
+  await suivant(); await p.check('input[name="as-logement"][value="locataire"]'); await suivant(); await suivant();
+  const recap = await p.textContent("#as-corps");
+  await suivant(); await p.waitForTimeout(400);
+  const x = await p.evaluate(() => { const r = window.Wealthnord.etat().revenu, a = r.activites[0]; return { frais: r.fraisCabinetPct, maj: r.majorationPct, semaines: r.semaines, parJour: a && a.parJour, nombre: a && a.nombre }; });
+  verifier("estimations : portrait complet, la part remise à la clinique est exigée (0 accepté)", sansFraisComplet.includes("remise à la clinique") && x.frais === 0, { sansFraisComplet, x });
+  verifier("estimations : revenu par jour proposé, marqué sans source, exigé, puis gardé", defaut.replace(/\s/g, "") === "960" && aide.includes("sans source officielle")
+    && sansJour.includes("revenu brut par jour") && x.parJour === 1000 && x.nombre === 4, { defaut, sansJour, x });
+  verifier("estimations : 48 jours d'hospitalisation à la place de 4 jours de clinique par semaine retirent 12 semaines (52 − 6 − 12 = 34)",
+    x.semaines === 34 && calcul.replace(/\s/g, " ").includes("Semaines en clinique : 34") && recap.includes("34 semaines en clinique") && recap.includes("à la place de la clinique"), { calcul, semaines: x.semaines });
+  verifier("estimations : hors territoire désigné, aucune majoration", x.maj === 0, x);
+  verifier("estimations : aucune erreur", erreurs.length === 0, erreurs);
+  await ctx.close();
+}
 
 /* 36. Import sûr : un âge d'enfant hors borne ne bloque plus l'app ; une clé « __proto__ » est ignorée ; un fichier
    qui n'est pas une sauvegarde ne change rien ; un nom de dette en forme de formule est neutralisé dans le CSV. */
@@ -1889,7 +1938,7 @@ async function codesVulnerabilite(b, base) {
   const srv = await serveur(), base = `http://127.0.0.1:${srv.address().port}${PREFIXE}`;
   const b = await chromium.launch();
   try {
-    for (const scenario of [exemple, brochure, alertes, sauvegarde, robustesse, injection, rapport, nouvelleVersion, budget, logo, sousOnglets, repartition, verrou, verrouDelai, verrouOnglets, sommaireComptable, monteCarlo, apercuCoherent, assistantVide, assistantMode, rendementProfil, lexiqueRamq, fraisGardeMenage, acomptesCeliapp, finitions, enteteEtChamps, transfert, residence, resumeDetail, tempsQuiPasse, planCalendrier, comparerActes, outilsAvances, etSi, deuxOffres, demarrageRapide, demarrageGmfu, importSur, saisieSolide, accessibiliteLot8, prochainPaiement, superviseurAB, supervisionPlan, reerDroits, premiereAnneeApres, hypotheseProjection, loi2, repertoireActes, codesVulnerabilite, revenuEtImpot, ciblesTactiles]) {
+    for (const scenario of [exemple, brochure, alertes, sauvegarde, robustesse, injection, rapport, nouvelleVersion, budget, logo, sousOnglets, repartition, verrou, verrouDelai, verrouOnglets, sommaireComptable, monteCarlo, apercuCoherent, assistantVide, assistantMode, rendementProfil, lexiqueRamq, fraisGardeMenage, acomptesCeliapp, finitions, enteteEtChamps, transfert, residence, resumeDetail, tempsQuiPasse, planCalendrier, comparerActes, outilsAvances, etSi, deuxOffres, demarrageRapide, demarrageGmfu, assistantEstimations, importSur, saisieSolide, accessibiliteLot8, prochainPaiement, superviseurAB, supervisionPlan, reerDroits, premiereAnneeApres, hypotheseProjection, loi2, repertoireActes, codesVulnerabilite, revenuEtImpot, ciblesTactiles]) {
       if (process.env.SCENARIOS && !process.env.SCENARIOS.split(",").includes(scenario.name)) continue;
       try { await scenario(b, base); } catch (e) { verifier(`${scenario.name} : déroulement`, false, String(e).split("\n")[0]); }
     }

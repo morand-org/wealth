@@ -1171,7 +1171,7 @@ window.Verrou.quandOuvert(function () {
         : depensesEffectives().filter(b => b.montant > 0 && b.k !== "loyer").length < 3;
       if (depensesInsuffisantes) action("important", "Entrez vos dépenses du mois (page Budget) : le loyer et le reste, ou chaque poste. Sans elles, le surplus est surestimé.");
       if (!R.vueResidence && (S.revenu.activites || []).some(x => x.calcul !== "patients" && ACTIVITES[x.type] && x.parJour === ACTIVITES[x.type].parJour))
-        action("info", "Vérifiez le revenu par jour de vos activités en établissement (page Revenu) : les valeurs de départ sont indicatives.");
+        action("info", "Vérifiez le revenu par jour de vos activités en établissement (page Revenu) : les valeurs de départ sont indicatives, sans source officielle.");
       if (!S.epargne.encaisse && !S.epargne.reer.solde && !S.epargne.celi.solde && !S.epargne.reer.droits) action("info", "Ajoutez votre épargne et vos droits REER (page Patrimoine, bouton Modifier).");
     }
     // REER : une cotisation plus grande que les droits n'est déduite que jusqu'aux droits ; sans droits inscrits, rien n'est vérifié.
@@ -2425,7 +2425,7 @@ window.Verrou.quandOuvert(function () {
     { k: "frequence", l: "Fréquence", t: "select", o: [["semaine", "Par semaine"], ["mois", "Par mois"], ["annee", "Par année"], ["cycle", "Toutes les … semaines"]] },
     { k: "cycle", l: "Toutes les", u: "sem.", s: 1, seul: a => a.frequence === "cycle" },
     { k: "calcul", l: "Revenu calculé à partir de", t: "select", o: [["jour", "Un revenu brut par jour (ou quart)"], ["patients", "Patients par jour × revenu par patient"]] },
-    { k: "parJour", l: "Revenu brut par jour (ou quart)", u: "$", s: 50, seul: a => a.calcul !== "patients", h: "Valeur de départ indicative : remplacez-la par la vôtre (collègues, relevés de la RAMQ)." },
+    { k: "parJour", l: "Revenu brut par jour (ou quart)", u: "$", s: 50, seul: a => a.calcul !== "patients", h: "Valeur de départ indicative, sans source officielle : remplacez-la par la vôtre (collègues, relevés de la RAMQ)." },
     { k: "patients", l: "Patients par jour", u: "pat.", s: 1, seul: a => a.calcul === "patients" },
     { k: "parPatient", l: "Revenu moyen par patient", u: "$", s: 5, seul: a => a.calcul === "patients", h: "Visites, prises en charge et suppléments, en moyenne. Estimation à préciser avec vos relevés." },
   ];
@@ -4927,9 +4927,9 @@ window.Verrou.quandOuvert(function () {
   let A = null, etape = 0;
   const reponsesVides = () => ({ famille: null, depuis12mois: true, enfantCommun: false, partenaire: "salarie", revenuPartenaire: 0,
     enfants: [], milieu: null, mode: "horaire", demiJournees: 8, totalGmfu: 8, admin: 0, srv: 0, premiere: true, incorporee: false,
-    patientsParDJ: null, patientsSRV: null, heuresParDJ: 4, vacances: 6, enseignement: 2, residents: 1, inscrits: 0, nouveaux: 0, vulnerables: 0, membreGmf: null, fraisPct: 0,
+    patientsParDJ: null, patientsSRV: null, heuresParDJ: 4, vacances: 6, enseignement: 2, residents: 1, inscrits: 0, nouveaux: 0, vulnerables: 0, membreGmf: null, fraisPct: null, territoire: false, majoration: null,
     statut: "pratique", niveau: "1", debutPratique: (() => { const d = new Date(); return `${d.getMonth() >= 6 ? d.getFullYear() + 1 : d.getFullYear()}-07`; })(),
-    ...Object.fromEntries(TYPES_ASSISTANT.flatMap(k => [["act_" + k, false], ["actN_" + k, 4]])),
+    ...Object.fromEntries(TYPES_ASSISTANT.flatMap(k => [["act_" + k, false], ["actN_" + k, 4], ["actR_" + k, false], ["actJ_" + k, ACTIVITES[k].parJour]])),
     logement: null, loyer: 0, maison: 0, hypotheque: 0, tauxHyp: 4.5, paiementHyp: 0, partMaison: 50,
     marge: false, margeSolde: 0, margeTaux: 4.5, pret: false, pretSolde: 0, pretTaux: null, pretPaiement: 0, auto: false, autoSolde: 0, autoTaux: null, autoPaiement: 0 });
   const enCouple = () => A.famille === "maries" || A.famille === "fait";
@@ -4961,6 +4961,9 @@ window.Verrou.quandOuvert(function () {
     inp.addEventListener("change", () => { A[cle] = inp.checked; if (refaire) { rendreEtape(); document.getElementById("as-" + cle).focus(); } });
   }, false);
 
+  // Part remise à la clinique : demandée en clinique, sans valeur par défaut (0 s'inscrit).
+  const asFrais = () => asNombre("Part de votre facturation remise à la clinique", "fraisPct", "%", 0.5, "Les frais de cabinet : loyer, personnel, équipement. Souvent de 25 à 35 % en clinique privée. 0 si vous n'en remettez aucune.", true);
+  const fraisManquants = () => A.milieu === "clinique" && A.fraisPct == null ? "Inscrivez la part de votre facturation remise à la clinique (0 si vous n'en remettez aucune)." : "";
   const ETAPES = [
     { titre: "Bienvenue dans WealthMorand", bouton: "Portrait complet", rendre: c => {
       c.appendChild(el("p", "as-intro", "Comparez vos modes de rémunération en deux questions : votre pratique, puis votre semaine. Ou faites votre portrait complet (famille, pratique, logement, dettes), en deux minutes. Tout reste sur cet appareil, et tout se modifie ensuite."));
@@ -4996,7 +4999,8 @@ window.Verrou.quandOuvert(function () {
       c.appendChild(asGroupe(nb$, ...ages));
       c.appendChild(el("p", "aide", "Les allocations familiales, l'assurance médicaments et le REEE en dépendent. Pour un enfant de moins d'un an, inscrivez 0."));
     } },
-    { titre: "Votre pratique", valide: () => A.milieu ? "" : "Choisissez votre milieu de pratique.", rendre: c => {
+    { titre: "Votre pratique", valide: () => !A.milieu ? "Choisissez votre milieu de pratique."
+      : A.territoire && !(A.majoration > 0) ? "Inscrivez la majoration de votre territoire, en pourcentage." : "", rendre: c => {
       // En résidence : le niveau et le début de la pratique ; les questions suivantes décrivent la pratique à venir.
       c.appendChild(asChoix("Où en êtes-vous ?", "statut", [["pratique", "En pratique"], ["residence", "En résidence", "Salaire de résident (échelle de la FMRQ) jusqu'au début de la pratique"]]));
       const residence = A.statut === "residence";
@@ -5012,6 +5016,9 @@ window.Verrou.quandOuvert(function () {
         ["horaire", "Taux horaire", "Les heures, plus des forfaits et des suppléments"],
         ["mixte", "Mixte", "Un forfait par heure, plus une part du tarif des visites"],
         ["acte", "À l'acte", "Chaque visite payée selon son tarif"]]));
+      // Territoire désigné (annexes XII et XII-A) : la personne inscrit le pourcentage de son territoire.
+      if (A.milieu) c.appendChild(asGroupe(asCase("Je pratique en territoire désigné", "territoire", "Rémunération majorée dans les territoires des annexes XII et XII-A de l'entente : sur les visites, les heures, les activités et les forfaits d'inscription ; pas sur les suppléments.", true),
+        A.territoire && asNombre("Majoration de votre territoire", "majoration", "%", 0.5, "Celle de votre territoire : par exemple 15 pour 115 %.", true)));
     } },
     /* Votre semaine. En GMF-U : le total des demi-journées au GMF-U d'abord, puis sa répartition (sans rendez-vous,
        enseignement, administratif) ; les demi-journées de bureau en découlent. Les champs qui dépendent d'une réponse
@@ -5025,7 +5032,8 @@ window.Verrou.quandOuvert(function () {
         A.demiJournees = bureau + (+A.enseignement || 0);
         if (bureau > 0 && !(A.patientsParDJ > 0)) return "Inscrivez le nombre de patients que vous voyez par demi-journée de bureau.";
       } else if (A.demiJournees > 0 && !(A.patientsParDJ > 0)) return "Inscrivez le nombre de patients que vous voyez par demi-journée de rendez-vous.";
-      return A.srv > 0 && !(A.patientsSRV > 0) ? "Inscrivez le nombre de patients par demi-journée de sans rendez-vous." : "";
+      if (A.srv > 0 && !(A.patientsSRV > 0)) return "Inscrivez le nombre de patients par demi-journée de sans rendez-vous.";
+      return A.rapide ? fraisManquants() : "";
     }, rendre: c => {
       const residence = A.statut === "residence", heures = A.milieu && MILIEUX[A.milieu].modes.length > 1, gmfu = A.milieu === "gmfu";
       if (residence) c.appendChild(el("p", "as-intro", "Votre pratique à venir, telle que vous la prévoyez."));
@@ -5046,7 +5054,9 @@ window.Verrou.quandOuvert(function () {
         gmfu && si(() => A.enseignement > 0, asNombre("Résidents supervisés en même temps", "residents", "rés.", 1, "Pendant une demi-journée d'enseignement, en moyenne.", true)),
         A.rapide && asNombre("Patients inscrits, environ", "inscrits", "pat.", 50, "Facultatif : les forfaits annuels en dépendent (forfait GMF, patients vulnérables)."),
         heures && asNombre("Heures par demi-journée", "heuresParDJ", "h", 0.25, "Pour le taux horaire et le forfait horaire du mixte."),
-        asNombre("Semaines de vacances par année", "vacances", "sem.", 1, "Vos semaines en clinique : 52 moins ces vacances. Si vous faites des semaines à l'hôpital, retirez-les ensuite des semaines en clinique (Revenu, Modifier)."),
+        A.rapide && A.milieu === "clinique" && asFrais(),
+        asNombre("Semaines de vacances par année", "vacances", "sem.", 1, A.rapide ? "Vos semaines en clinique : 52 moins ces vacances. Si vous faites des jours à l'hôpital à la place de la clinique, retirez-les ensuite (Revenu, Modifier)."
+          : "Vos semaines en clinique : 52 moins ces vacances, et moins les jours à l'hôpital qui remplacent la clinique (étape des activités)."),
         !residence && asCase("C'est ma première année de pratique", "premiere", "La clientèle se bâtit, et aucun acompte d'impôt n'est exigé la première année."),
         asCase("Ma pratique est incorporée", "incorporee", "Les paiements de la RAMQ sont versés à votre société.")));
       const maj = () => {
@@ -5056,23 +5066,33 @@ window.Verrou.quandOuvert(function () {
       };
       c.addEventListener("input", maj); maj();
     } },
-    { titre: "Votre clientèle", rendre: c => {
+    { titre: "Votre clientèle", valide: fraisManquants, rendre: c => {
       const nouvelle = A.premiere || A.statut === "residence", clinique = A.milieu === "clinique";
       if (A.membreGmf === null) A.membreGmf = A.milieu === "gmfu";
       c.appendChild(asGroupe(asNombre(nouvelle ? "Patients déjà inscrits au départ" : "Patients inscrits auprès de vous", "inscrits", "pat."),
         nouvelle && asNombre("Nouveaux patients attendus la première année", "nouveaux", "pat.", 1, "Ceux du guichet d'accès : chacun donne un supplément d'inscription et une visite de prise en charge."),
         asNombre("Patients vulnérables", "vulnerables", "%", 1, "Au moins un code de vulnérabilité : un forfait annuel de plus par patient."),
         asCase("Membre d'un GMF", "membreGmf", "Forfait de 9,35 $ par patient inscrit vu dans l'année. Un GMF-U est un GMF."),
-        clinique && asNombre("Part de votre facturation remise à la clinique", "fraisPct", "%", 0.5, "Les frais de cabinet : loyer, personnel, équipement. Souvent de 25 à 35 % en clinique privée.")));
+        clinique && asFrais()));
       c.appendChild(el("p", "aide", "Tout le reste (types de visites, tarifs, forfaits, apprenants) part des valeurs de la RAMQ : précisez-le ensuite dans Revenu, Modifier."));
     } },
-    { titre: "Vos activités en établissement", rendre: c => {
+    { titre: "Vos activités en établissement", valide: () => {
+      const k = TYPES_ASSISTANT.find(x => A["act_" + x] && A["actN_" + x] > 0 && !(A["actJ_" + x] > 0));
+      return k ? `Inscrivez votre revenu brut par ${ACTIVITES[k].unite} : ${ACTIVITES[k].nom.toLowerCase()}.` : "";
+    }, rendre: c => {
       c.appendChild(el("p", "as-intro", "En plus de votre pratique principale : cochez celles que vous faites."));
-      c.appendChild(asGroupe(...TYPES_ASSISTANT.flatMap(k => [
-        asCase(ACTIVITES[k].nom, "act_" + k, null, true),
-        A["act_" + k] && asNombre(`${ACTIVITES[k].unite === "quart" ? "Quarts" : "Jours"} par mois`, "actN_" + k, "par mois", 0.5),
-      ])));
-      c.appendChild(el("p", "aide", "Le revenu par jour part d'une valeur indicative. Ensuite, dans la page Revenu, précisez-le et choisissez une autre fréquence au besoin (par semaine, par année, toutes les 6 semaines…)."));
+      c.appendChild(asGroupe(...TYPES_ASSISTANT.flatMap(k => {
+        const u = ACTIVITES[k].unite;
+        return [asCase(ACTIVITES[k].nom, "act_" + k, null, true),
+          A["act_" + k] && asNombre(`${u === "quart" ? "Quarts" : "Jours"} par mois`, "actN_" + k, "par mois", 0.5),
+          A["act_" + k] && asNombre(`Revenu brut par ${u}`, "actJ_" + k, "$", 50, "Valeur de départ indicative, sans source officielle : remplacez-la par la vôtre (collègues, relevés de la RAMQ).", true),
+          A["act_" + k] && asCase(`Ces ${u}s remplacent des jours en clinique`, "actR_" + k, "Cochez si, ces jours-là, vous n'êtes pas en clinique : ils sont retirés de vos semaines en clinique.")];
+      })));
+      const sem = el("p", "as-calcul"); sem.setAttribute("aria-live", "polite"); c.appendChild(sem);
+      const maj = () => { const r = semainesRetirees(A);
+        sem.textContent = `Semaines en clinique : ${nb(semainesClinique(A))}${r > 0 ? ` (52 moins ${nb(+A.vacances || 0)} de vacances et ${nb(r)} remplacées par vos activités)` : ""}`; };
+      c.addEventListener("input", maj); c.addEventListener("change", maj); maj();
+      c.appendChild(el("p", "aide", "Ensuite, dans la page Revenu, vous pourrez choisir une autre fréquence au besoin (par semaine, par année, toutes les 6 semaines…)."));
     } },
     { titre: "Votre logement", valide: () => A.logement ? "" : "Choisissez votre logement.", rendre: c => {
       c.appendChild(asChoix("Vous êtes", "logement", [["locataire", "Locataire"], ["proprietaire", "Propriétaire"]]));
@@ -5104,9 +5124,9 @@ window.Verrou.quandOuvert(function () {
       c.appendChild(rangees(el("div"), [
         { titre: "Famille", sous: !couple ? "Sans partenaire" : `En couple, ${A.famille === "fait" ? "union de fait" : "mariage ou union civile"} · partenaire ${A.partenaire === "sans" ? "sans revenu de travail" : `${A.partenaire === "salarie" ? "en emploi salarié" : "à son compte"}, ${$(A.revenuPartenaire)} par année`}` },
         { titre: "Enfants", sous: n ? `${n} enfant${n > 1 ? "s" : ""} : ${A.enfants.map(a => `${nb(a, 0)} an${a >= 2 ? "s" : ""}`).join(", ")}` : "Aucun" },
-        { titre: "Pratique", sous: `${MILIEUX[A.milieu].nom}${MILIEUX[A.milieu].modes.length > 1 ? ` · ${NOM_MODE[A.mode].toLowerCase()}` : ""} · ${resumeSemaine(A)}${A.srv ? ` et ${nb(A.srv)} de SRV` : ""} par semaine · ${nb(semainesClinique(A))} semaines en clinique${A.premiere || A.statut === "residence" ? " · première année" : ""}${A.incorporee ? " · incorporée" : ""}` },
+        { titre: "Pratique", sous: `${MILIEUX[A.milieu].nom}${MILIEUX[A.milieu].modes.length > 1 ? ` · ${NOM_MODE[A.mode].toLowerCase()}` : ""} · ${resumeSemaine(A)}${A.srv ? ` et ${nb(A.srv)} de SRV` : ""} par semaine · ${nb(semainesClinique(A))} semaines en clinique${A.premiere || A.statut === "residence" ? " · première année" : ""}${A.incorporee ? " · incorporée" : ""}${A.territoire ? ` · territoire désigné, majoration de ${nb(A.majoration || 0)} %` : ""}` },
         { titre: "Clientèle", sous: `${nb(A.inscrits || 0)} inscrits${A.premiere || A.statut === "residence" ? `, ${nb(A.nouveaux || 0)} nouveaux attendus` : ""} · ${nb(A.vulnerables || 0)} % vulnérables${A.membreGmf ? " · GMF" : ""}${A.milieu === "clinique" ? ` · ${nb(A.fraisPct || 0)} % remis à la clinique` : ""}` },
-        { titre: "Activités en établissement", sous: TYPES_ASSISTANT.filter(k => A["act_" + k] && A["actN_" + k] > 0).map(k => `${ACTIVITES[k].nom} : ${nb(A["actN_" + k])} par mois`).join(" · ") || "Aucune" },
+        { titre: "Activités en établissement", sous: TYPES_ASSISTANT.filter(k => A["act_" + k] && A["actN_" + k] > 0).map(k => `${ACTIVITES[k].nom} : ${nb(A["actN_" + k])} par mois à ${$(A["actJ_" + k])}${A["actR_" + k] ? ", à la place de la clinique" : ""}`).join(" · ") || "Aucune" },
         { titre: "Logement", sous: A.logement === "locataire" ? `Locataire · ${$(A.loyer)} par mois` : `Propriétaire · maison de ${$(A.maison)}${A.hypotheque ? `, hypothèque de ${$(A.hypotheque)}` : ""}` },
         { titre: "Autres dettes", sous: det.length ? det.join(" · ") : "Aucune" },
       ]));
@@ -5163,8 +5183,15 @@ window.Verrou.quandOuvert(function () {
     const adm = A.milieu === "gmfu" ? Math.max(0, +A.admin || 0) : 0, admTexte = adm > 0 ? `, ${nb(adm)} administrative${adm > 1 ? "s" : ""}` : "";
     return (ens > 0 ? `${clinique}, ${nb(ens)} d'enseignement (${nb(res)} résident${res > 1 ? "s" : ""})` : clinique) + admTexte;
   }
-  // Semaines en clinique : 52 moins les vacances.
-  const semainesClinique = A => Math.max(0, Math.min(52, 52 - Math.max(0, +A.vacances || 0)));
+  /* Semaines en clinique : 52 moins les vacances, moins les jours d'activités qui remplacent la clinique,
+     convertis en semaines selon les jours en clinique par semaine (deux demi-journées font un jour ; un quart compte
+     pour un jour). Arrondi à la demi-semaine. */
+  function semainesRetirees(A) {
+    const demi = A.milieu === "gmfu" ? Math.max(0, +A.totalGmfu || 0) : Math.max(0, +A.demiJournees || 0) + Math.max(0, +A.srv || 0);
+    const jours = TYPES_ASSISTANT.filter(k => A["act_" + k] && A["actR_" + k]).reduce((t, k) => t + Math.max(0, +A["actN_" + k] || 0) * 12, 0);
+    return jours > 0 && demi > 0 ? Math.round(2 * jours / (demi / 2)) / 2 : 0;
+  }
+  const semainesClinique = A => Math.max(0, Math.min(52, 52 - Math.max(0, +A.vacances || 0) - (A.rapide ? 0 : semainesRetirees(A))));
   /* Portrait de départ à partir des réponses : rien d'autre ne vient de l'exemple que les tarifs,
      les paramètres d'impôt, les hypothèses de l'avenir et la répartition des types de visites.
      Prêt d'études : remboursement du capital six mois après la fin des études ; remise de 15 %
@@ -5184,13 +5211,13 @@ window.Verrou.quandOuvert(function () {
       anneePremiere: residence ? +String(A.debutPratique || "").slice(0, 4) || 0 : A.premiere ? auj.getFullYear() : 0, modeBudget: MILIEUX[A.milieu].modes.includes(A.mode) ? A.mode : MILIEUX[A.milieu].modes[0],
       demiJournees: dj, enseignement: gmfu ? Math.min(dj, Math.max(0, Math.round(+A.enseignement || 0))) : 0,
       residents: gmfu && A.enseignement > 0 ? Math.min(6, Math.max(0, Math.round(+A.residents || 0))) : 0, demiJourneesSRV: A.srv || 0, patientsSRV: A.srv ? A.patientsSRV || 0 : 0,
-      demiJourneesAdmin: gmfu ? Math.min(14, Math.max(0, +A.admin || 0)) : 0,
+      demiJourneesAdmin: gmfu ? Math.min(14, Math.max(0, +A.admin || 0)) : 0, majorationPct: A.territoire ? Math.min(100, Math.max(0, +A.majoration || 0)) : 0,
       patientsParDJ: A.patientsParDJ || 0, heuresParDJ: A.heuresParDJ || 4, semaines: semainesClinique(A), semainesArrivee: semainesClinique(A), autresRevenus: 0,
       inscritsDebut: Math.max(0, A.inscrits || 0), nouveauxGuichet: A.premiere || residence ? Math.max(0, A.nouveaux || 0) : 0, nouveauxSansMedecin: 0, nouveauxTransferes: 0,
       nouveauxAnGuichet: 0, nouveauxAnSansMedecin: 0, partVulnerable: Math.min(100, Math.max(0, A.vulnerables || 0)), partTresVulnerable: 0, partGroupe2: 0, partGroupe34: 0,
       membreGmf: A.membreGmf == null ? gmfu : !!A.membreGmf, primeInscription: 0, fraisCabinetPct: A.milieu === "clinique" ? Math.min(100, Math.max(0, A.fraisPct || 0)) : 0, fraisCabinetMois: 0, lignes: [],
       activites: TYPES_ASSISTANT.filter(k => A["act_" + k] && A["actN_" + k] > 0).map(k => ({ id: nouvelId("a"), type: k, nom: "", nombre: A["actN_" + k], frequence: "mois", cycle: 6,
-        calcul: "jour", parJour: ACTIVITES[k].parJour, patients: ACTIVITES[k].patients, parPatient: ACTIVITES[k].parPatient })) });
+        calcul: "jour", parJour: Math.max(0, +A["actJ_" + k] || 0), patients: ACTIVITES[k].patients, parPatient: ACTIVITES[k].parPatient })) });
     s.confirmes["revenu.membreGmf"] = true;   // demandé dans l'assistant
     s.impot = { ...s.impot, structure: A.incorporee ? "societe" : "particulier", depensesPro: 0, depensesProMode: "total", depensesProDetail: [] };
     s.societe = { ...s.societe, solde: 0 };

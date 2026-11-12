@@ -147,12 +147,20 @@ inscrits ; en GMF-U, aussi les demi-journées d'enseignement et le nombre de
 résidents supervisés en même temps (rien n'est supposé), et le GMF-U compte
 comme membre d'un GMF. Puis il ouvre vos trois modes côte à côte ; tant
 qu'aucun patient n'est inscrit, une ligne sous le revenu le dit et mène au
-réglage ; le portrait complet se fait ensuite, quand vous voulez. Sinon, un
+réglage ; le portrait complet se fait ensuite, quand vous voulez. En clinique,
+même ce chemin rapide demande la part de la facturation remise à la clinique
+(0 s'inscrit) : sans elle, le net serait surestimé. Les deux chemins demandent
+si vous pratiquez en territoire désigné (annexes XII et XII-A), et alors le
+pourcentage de la majoration. Sinon, un
 **assistant de départ** pose quelques questions
 (famille, enfants, pratique, semaine, clientèle, activités, logement,
 dettes) et bâtit le point de départ à partir des réponses : patients par
 demi-journée, semaines de vacances, patients inscrits et nouveaux, part de
-vulnérables, frais de cabinet, taux et paiement des prêts. Rien de la
+vulnérables, frais de cabinet, taux et paiement des prêts. Pour chaque
+activité en établissement, il demande le nombre de jours (ou de quarts) par
+mois, le revenu brut par jour (la valeur proposée est indicative, sans source
+officielle) et si ces jours remplacent la clinique : si oui, ils sont retirés
+des semaines en clinique, selon vos jours en clinique par semaine. Rien de la
 clientèle ni des frais de l'exemple n'est gardé ; les dépenses
 professionnelles partent de 0. L'exemple fictif reste offert. La carte **Votre
 portrait** de l'aperçu montre ce qui est rempli et propose la suite. Des conjoints de

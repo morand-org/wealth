@@ -304,8 +304,9 @@
     clsc: { nom: "CLSC", long: "CLSC", modes: MODES_ETAB, aide: "Taux horaire, mixte ou à l'acte." },
   };
   const SI_ETAB = "revenu.milieu=gmfu|clsc", SI_GMFU = "revenu.milieu=gmfu";
-  /* Activités en établissement : revenu brut par jour (ou quart) de départ, indicatif,
-     à remplacer par le vôtre ; ou patients par jour × revenu moyen par patient. */
+  /* Activités en établissement : revenu brut par jour (ou quart) de départ, indicatif et sans source
+     officielle (aucun tarif de la RAMQ ne donne un revenu par jour), à remplacer par le vôtre ; l'assistant
+     le fait inscrire. Ou : patients par jour × revenu moyen par patient. */
   const ACTIVITES = {
     urgence: { nom: "Urgence", unite: "quart", parJour: 1500, patients: 25, parPatient: 60 },
     hospitalisation: { nom: "Hospitalisation", unite: "jour", parJour: 960, patients: 16, parPatient: 60 },
