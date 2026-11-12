@@ -8,7 +8,7 @@ window.Verrou.quandOuvert(function () {
   const CLE = "boussole.v1";
   // Valeurs de départ, catalogues et champs (catalogues.js) ; formats, composants et graphique (interface.js).
   const { EXEMPLE, nouvelId, CATALOGUE, ITEMS_REVENUS, normaliserLignes, annuelLigne, estPro, nomLigne, ITEMS_PRO, normaliserPro, AIDE_CATEGORIE,
-    normaliserBudget, nomDepense, categorie, VERIFICATION, MILIEUX, ACTIVITES, nomActivite, LEXIQUE } = window.WM.catalogues;
+    normaliserBudget, nomDepense, categorie, VERIFICATION, MILIEUX, ACTIVITES, nomActivite, LEXIQUE, CODES_VULNERABILITE } = window.WM.catalogues;
   const { SERIES, $, $2, nb, pct, signe, texteDe, moisAn, el, icone, hero, puce, rangees, segment, tableauSimple, lignes, moins, signePct,
     graphiqueLignes, lexique, esc } = window.WM.interface;
 
@@ -1755,6 +1755,26 @@ window.Verrou.quandOuvert(function () {
     // Supervision : son onglet, pour toute pratique (hors GMF-U, pour préparer une demi-journée d'enseignement).
     document.getElementById("rv-carte-supervision").hidden = false;
   }
+  // Codes de vulnérabilité (page Codes) : les 20 catégories, filtrées par code ou par mot.
+  function rendreVulnerabilite() {
+    const q = document.getElementById("vu-q"), table = document.getElementById("rv-vuln");
+    if (!q.dataset.branche) { q.dataset.branche = "1"; q.addEventListener("input", rendreVulnerabilite); }
+    const mots = sansAccents(q.value.trim()).split(/\s+/).filter(Boolean);
+    // Chaque mot cherché doit commencer un mot du libellé ou des mots de recherche ; deux lettres ou moins, être un mot entier :
+    // « FA » trouve la fibrillation auriculaire, pas « façon ».
+    const liste = CODES_VULNERABILITE.filter(v => { const t = sansAccents(`${v.code} ${v.libelle} ${v.m}`).split(/[^a-z0-9]+/); return mots.every(m => t.some(w => m.length <= 2 ? w === m : w.startsWith(m))); });
+    lignes(table, ["Code", "Catégorie de problèmes de santé"], liste.map(v => ({ cls: v.ferme ? "vu-ferme" : null, classes: ["vu-code", null],
+      cellules: [v.code, v.note ? `${v.libelle}. ${v.note}` : v.libelle] })));
+    document.getElementById("vu-vide").hidden = liste.length > 0;
+    const actifs = CODES_VULNERABILITE.filter(v => !v.ferme).length;
+    document.getElementById("rv-vuln-resume").textContent = `${nb(actifs, 0)} catégories, de 01 à 20`;
+    const M = C.MONTANTS_LIEU;
+    document.getElementById("rv-vuln-note").textContent = "Un patient inscrit est vulnérable s'il a au moins une de ces catégories ; il peut en avoir plusieurs. "
+      + `Forfait annuel (EP 40, par. 6.01) : ${$2(M.cabinet.forfaitVulnerable)} en cabinet, ${$2(M.etablissement.forfaitVulnerable)} en établissement pour une catégorie ; 150 % pour deux ; 200 % pour trois ou plus. `
+      + "Ajouter, modifier ou annuler un code se fait lors d'une visite ; l'inscription peut être modifiée dans les 90 jours suivant la visite (infolettre 171). "
+      + "Libellés : Guide de gestion « Révision des codes de vulnérabilité » de la FMOQ (2017), d'après l'infolettre 171 de la RAMQ du 15 septembre 2017. "
+      + "Modifications faites depuis à l'EP 40 : source manquante, non vérifiées ici. Vérifiez le libellé en vigueur avant d'inscrire un code.";
+  }
   // Formulaires de la CNESST (page Codes, avec le répertoire des actes).
   function rendreCnesst() {
     lignes(document.getElementById("rv-cnesst"), ["Formulaire", "Tarif"], C.CNESST.map(f => ({ cellules: [`${f.nom} · ${f.code}`, $2(f.tarif)] })));
@@ -3152,7 +3172,7 @@ window.Verrou.quandOuvert(function () {
     // Seule la page affichée se redessine (lot 10 de l'audit) : ouvrir une page appelle tout() de nouveau.
     const visible = (document.querySelector(".vue:not([hidden])") || {}).id || "v-apercu";
     ({ "v-apercu": () => rendreApercu(R), "v-revenu": () => rendreRevenu(R), "v-comparer": () => rendreComparer(R), "v-impot": () => rendreImpot(R), "v-budget": () => rendreBudget(R),
-      "v-codes": () => rendreCnesst(), "v-loi2": () => rendrePageLoi2(R),
+      "v-codes": () => { rendreVulnerabilite(); rendreCnesst(); }, "v-loi2": () => rendrePageLoi2(R),
       "v-avenir": () => rendreAvenir(R), "v-donnees": () => rendreFiabilite() })[visible]?.();
     if (feuilleCourante && feuilleCourante.maj) feuilleCourante.maj();
     // Sigles de la RAMQ : définition au toucher, dans les pages et le panneau ouvert.

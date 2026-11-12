@@ -587,10 +587,37 @@
     { termes: ["FMRQ"], def: `Fédération des médecins résidents du Québec : elle négocie l'entente des résidents avec le ministère de la Santé (salaires, primes, congés). Échelle 2026-2027 : de ${C.salaireResident({ niveau: 1, date: "2026-04-01" }).salaire.toLocaleString("fr-CA")} $ (R1) à ${C.salaireResident({ niveau: 6, date: "2026-04-01" }).salaire.toLocaleString("fr-CA")} $ (R6 et plus).`, ref: "Entente FMRQ-MSSS 2021-2028, annexe I" },
   ];
 
+  /* Codes de vulnérabilité (catégories de problèmes de santé de l'EP 40, par. 5.01) : libellés du Guide de gestion
+     « Révision des codes de vulnérabilité » de la FMOQ (2017), d'après l'infolettre 171 de la RAMQ du 15 septembre 2017.
+     Les modifications faites ensuite à l'EP 40 n'ont pas été vérifiées ici (le site de la RAMQ refuse la lecture
+     automatique) : la page le dit. « m » : mots de recherche, pas des libellés officiels. */
+  const CODES_VULNERABILITE = [
+    { code: "01", libelle: "Problèmes de santé mentale chroniques et récidivants (DSM-V) : troubles d'anxiété généralisée, troubles du comportement alimentaire (anorexie, boulimie)", m: "anxiété tag anorexie boulimie santé mentale" },
+    { code: "02", libelle: "Maladies pulmonaires obstructives chroniques (MPOC), asthme de modéré à sévère (patient présentant un VEMS inférieur à 70 % de la valeur prédite), pneumopathies professionnelles", m: "mpoc asthme poumon" },
+    { code: "03", libelle: "Maladie cardiaque artériosclérotique (MCAS), insuffisance cardiaque, hypertension sévère (grade 3)", m: "coeur cœur mcas insuffisance cardiaque hta hypertension" },
+    { code: "04", libelle: "Cancer associé à un traitement passé, présent ou projeté en chimiothérapie systémique ou radiothérapie ou en phase palliative", m: "cancer oncologie chimiothérapie radiothérapie palliatif" },
+    { code: "05", libelle: "Diabète avec hémoglobine A1C à 6,5 ou plus au moment du diagnostic, excluant le diabète de grossesse", m: "diabète hba1c" },
+    { code: "06", libelle: "Toxicomanie ou alcoolisme en cours de sevrage ou ayant donné lieu à une cure de désintoxication de drogues dures ou d'alcool au cours des cinq dernières années, toxicomanie sous traitement de méthadone ou de buprénorphine", m: "alcool drogue dépendance méthadone buprénorphine suboxone" },
+    { code: "07", libelle: "VIH/SIDA, hépatite C", m: "vih sida hépatite vhc" },
+    { code: "08", libelle: "Maladies dégénératives du système nerveux, démence avec MMSE de 26 et moins, blessés médullaires avec séquelles permanentes entraînant une invalidité et traumatismes crâniens avec séquelles permanentes entraînant une invalidité", m: "démence alzheimer parkinson sclérose snc tcc" },
+    { code: "09", libelle: "Maladies inflammatoires chroniques : polyarthrite rhumatoïde, psoriasis avec atteinte autre que cutanée, lupus, sclérodermie et autres collagénoses, colite ulcéreuse, maladie de Crohn", m: "polyarthrite psoriasis lupus crohn colite mii" },
+    { code: "10", libelle: "Troubles dépressifs majeurs aigus, premier épisode, ou troubles anxieux aigus, premier épisode", note: "Valable 24 mois, renouvelable ; annulé au terme sauf action du médecin.", m: "dépression anxiété premier épisode" },
+    { code: "11", libelle: "Troubles dépressifs majeurs récidivants", m: "dépression récidivante" },
+    { code: "12", libelle: "Insuffisance rénale chronique avec une clairance de la créatinine inférieure à 30 ml par minute, insuffisance hépatique", m: "irc rein rénale foie hépatique" },
+    { code: "13", libelle: "Maladies thrombogènes nécessitant une anticoagulation à vie, fibrillation auriculaire avec CHADS à 2 et plus", m: "fa fibrillation anticoagulation thrombose" },
+    { code: "14", libelle: "Fibrillation auriculaire nécessitant une anticoagulothérapie à vie et suivi par RIN", note: "Fermé le 30 juin 2019 : la fibrillation auriculaire relève du code 13 (CHADS à 2 et plus).", ferme: true, m: "fa fibrillation" },
+    { code: "15", libelle: "Troubles de déficit de l'attention avec ou sans hyperactivité, pour les patients âgés de moins de 18 ans", note: "Retiré automatiquement par la RAMQ aux 18 ans.", m: "tdah tda enfant" },
+    { code: "16", libelle: "Déficience intellectuelle pour les patients présentant des troubles importants d'expression et de compréhension", m: "déficience intellectuelle" },
+    { code: "17", libelle: "Déficience auditive lorsque la communication avec le patient se fait de façon gestuelle ou par écrit, et déficience visuelle nécessitant la présence d'un accompagnateur lors de la rencontre du patient avec le médecin", m: "surdité aveugle vision audition" },
+    { code: "18", libelle: "Douleur chronique qui persiste depuis plus de six mois, liée à une condition chronique et provoquant une incapacité fonctionnelle ou nécessitant la prise continue d'une médication sur ordonnance lui permettant d'être fonctionnel", m: "douleur chronique" },
+    { code: "19", libelle: "Accident vasculaire cérébral entraînant des troubles graves de mobilité, de comportement, d'expression ou de compréhension", m: "avc" },
+    { code: "20", libelle: "Problèmes de santé (DSM-IV) : troubles psychotiques, troubles bipolaires, troubles envahissants du développement (troubles du spectre de l'autisme, Asperger)", m: "psychose schizophrénie bipolaire autisme tsa asperger santé mentale" },
+  ];
+
   window.WM = window.WM || {};
   window.WM.catalogues = {
     EXEMPLE, nouvelId, CATALOGUE, CATALOGUE_REVENUS, ITEMS_REVENUS, normaliserLignes, annuelLigne, estPro, nomLigne, LEXIQUE,
     CATALOGUE_PRO, ITEMS_PRO, normaliserPro, ITEMS, AIDE_CATEGORIE, normaliserBudget, nomDepense, categorie,
-    VERIFICATION, MILIEUX, ACTIVITES, nomActivite, champs,
+    VERIFICATION, MILIEUX, ACTIVITES, nomActivite, champs, CODES_VULNERABILITE,
   };
 })();

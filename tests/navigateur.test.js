@@ -1888,11 +1888,34 @@ async function ciblesTactiles(b, base) {
   await ctx2.close(); await ctx.close();
 }
 
+// Codes de vulnérabilité (page Codes) : les 20 catégories, la recherche par mot sans accents, la source et le code fermé.
+async function codesVulnerabilite(b, base) {
+  const { ctx, p, erreurs } = await ouvrir(b, base, { page: "codes", largeur: 320 });
+  await p.click("#rv-carte-vuln summary"); await p.waitForTimeout(100);
+  const etat = () => p.evaluate(() => ({ codes: [...document.querySelectorAll("#rv-vuln td.vu-code")].map(x => x.textContent), resume: document.getElementById("rv-vuln-resume").textContent,
+    vide: !document.getElementById("vu-vide").hidden, note: document.getElementById("rv-vuln-note").textContent, ferme: [...document.querySelectorAll("#rv-vuln tr.vu-ferme td.vu-code")].map(x => x.textContent),
+    debord: document.documentElement.scrollWidth > document.documentElement.clientWidth }));
+  const tout = await etat();
+  verifier("vulnérabilité : 20 codes de 01 à 20, le 14 fermé", tout.codes.length === 20 && tout.codes[0] === "01" && tout.codes[19] === "20" && tout.ferme.join() === "14" && /19 catégories/.test(tout.resume), tout);
+  verifier("vulnérabilité : source et limite indiquées", /FMOQ \(2017\)/.test(tout.note) && /infolettre 171/.test(tout.note) && /source manquante/.test(tout.note), tout.note);
+  await p.fill("#vu-q", "diabete"); await p.waitForTimeout(80);
+  const d = await etat();
+  verifier("vulnérabilité : « diabete » sans accent trouve le code 05", d.codes.join() === "05", d.codes);
+  await p.fill("#vu-q", "FA"); await p.waitForTimeout(80);
+  const fa = await etat();
+  verifier("vulnérabilité : « FA » trouve seulement les codes 13 et 14", fa.codes.join() === "13,14", fa.codes);
+  await p.fill("#vu-q", "zzz"); await p.waitForTimeout(80);
+  const z = await etat();
+  verifier("vulnérabilité : aucun résultat, message affiché, pas de défilement horizontal à 320 px", z.codes.length === 0 && z.vide && !z.debord, z);
+  verifier("vulnérabilité : aucune erreur", erreurs.length === 0, erreurs);
+  await ctx.close();
+}
+
 (async () => {
   const srv = await serveur(), base = `http://127.0.0.1:${srv.address().port}${PREFIXE}`;
   const b = await chromium.launch();
   try {
-    for (const scenario of [exemple, brochure, alertes, sauvegarde, robustesse, injection, rapport, nouvelleVersion, budget, logo, sousOnglets, repartition, verrou, verrouDelai, verrouOnglets, sommaireComptable, monteCarlo, apercuCoherent, assistantVide, assistantMode, rendementProfil, lexiqueRamq, fraisGardeMenage, acomptesCeliapp, finitions, enteteEtChamps, transfert, residence, resumeDetail, tempsQuiPasse, planCalendrier, comparerActes, outilsAvances, etSi, deuxOffres, demarrageRapide, demarrageGmfu, importSur, saisieSolide, accessibiliteLot8, prochainPaiement, superviseurAB, supervisionPlan, reerDroits, premiereAnneeApres, hypotheseProjection, loi2, repertoireActes, revenuEtImpot, ciblesTactiles]) {
+    for (const scenario of [exemple, brochure, alertes, sauvegarde, robustesse, injection, rapport, nouvelleVersion, budget, logo, sousOnglets, repartition, verrou, verrouDelai, verrouOnglets, sommaireComptable, monteCarlo, apercuCoherent, assistantVide, assistantMode, rendementProfil, lexiqueRamq, fraisGardeMenage, acomptesCeliapp, finitions, enteteEtChamps, transfert, residence, resumeDetail, tempsQuiPasse, planCalendrier, comparerActes, outilsAvances, etSi, deuxOffres, demarrageRapide, demarrageGmfu, importSur, saisieSolide, accessibiliteLot8, prochainPaiement, superviseurAB, supervisionPlan, reerDroits, premiereAnneeApres, hypotheseProjection, loi2, repertoireActes, codesVulnerabilite, revenuEtImpot, ciblesTactiles]) {
       if (process.env.SCENARIOS && !process.env.SCENARIOS.split(",").includes(scenario.name)) continue;
       try { await scenario(b, base); } catch (e) { verifier(`${scenario.name} : déroulement`, false, String(e).split("\n")[0]); }
     }

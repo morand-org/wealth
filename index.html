@@ -252,7 +252,7 @@
       <div class="carte detail-seul" id="rv-carte-offres" data-sous="offres"></div>
     </section>
 
-        <!-- ============ CODES : le répertoire des actes et les formulaires de la CNESST ============ -->
+        <!-- ============ CODES : le répertoire des actes, les codes de vulnérabilité et les formulaires de la CNESST ============ -->
     <section class="vue mode-detail" id="v-codes" aria-labelledby="h-codes" hidden>
       <header class="tete-page"><h1 id="h-codes">Codes de facturation</h1><button type="button" class="bouton-modifier bouton-reglages" data-feuille="revenu" aria-label="Personnaliser vos données : revenu et pratique" title="Personnaliser vos données"><span class="cache-visuel">Personnaliser</span></button></header>
       <div class="carte" id="rv-carte-repertoire">
@@ -266,6 +266,16 @@
         <div class="rep-liste" id="rep-liste"></div>
         <p class="aide" id="rep-source"></p>
       </div>
+      <details class="carte carte-repliable" id="rv-carte-vuln">
+        <summary><h2>Codes de vulnérabilité</h2><span class="repli-resume" id="rv-vuln-resume"></span></summary>
+        <div class="rep-recherche">
+          <label for="vu-q" class="visuellement-cache">Chercher une catégorie, par code ou par mot</label>
+          <input id="vu-q" type="search" placeholder="Code ou mot : diabète, FA, TDAH, 12…" autocomplete="off" spellcheck="false" enterkeyhint="search">
+        </div>
+        <div class="tableau-defile"><table class="tableau tableau-vuln" id="rv-vuln"></table></div>
+        <p class="aide" id="vu-vide" hidden>Aucune catégorie ne correspond.</p>
+        <p class="aide" id="rv-vuln-note"></p>
+      </details>
       <details class="carte carte-repliable" id="rv-carte-cnesst">
         <summary><h2>Formulaires de la CNESST</h2><span class="repli-resume" id="rv-cnesst-resume"></span></summary>
         <div class="tableau-defile"><table class="tableau" id="rv-cnesst"></table></div>

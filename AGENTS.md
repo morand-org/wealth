@@ -46,7 +46,7 @@ Lisez ce fichier en entier avant de commencer. Il passe avant vos habitudes.
      chiffrées sur l'appareil, conception décrite dans `README.md`. Le lien de
      transfert avec code reste offert.
    - Chaque page : un résumé, puis « Voir tout le détail ». Barre du bas : Revenu,
-     Comparer, Codes (répertoire des actes, CNESST), Loi 2, Finances (« Budget ·
+     Comparer, Codes (répertoire des actes, codes de vulnérabilité, CNESST), Loi 2, Finances (« Budget ·
      Patrimoine · Impôt ») ; l'Aperçu s'ouvre par le logo. Tout en haut, le bandeau
      « MORAND · MÉDECINE FAMILIALE » mène à l'accueil de morand.org.
    - Identité visuelle : polices Inter et Newsreader hébergées dans

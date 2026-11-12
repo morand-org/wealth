@@ -1298,3 +1298,8 @@ a.tuile:hover { border-color: var(--trait); }
   .nav { position: sticky; top: var(--haut-bande); height: calc(100vh - var(--haut-bande)); height: calc(100dvh - var(--haut-bande)); overflow-y: auto; overscroll-behavior: contain; }
   html { scroll-padding-top: calc(var(--haut-bande) + 24px); }
 }
+
+/* Codes de vulnérabilité : le libellé se lit en entier, à gauche ; le code fermé est grisé. */
+.tableau-vuln td, .tableau-vuln th { text-align: left; white-space: normal; vertical-align: top; line-height: 1.45; }
+.tableau-vuln td.vu-code { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--or-texte, var(--encre)); width: 3.5em; padding-right: 12px; }
+.tableau-vuln tr.vu-ferme td { color: var(--discret); }

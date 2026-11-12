@@ -70,7 +70,7 @@ chacune, alignées et de même hauteur sur ordinateur.
   trouvé, rien n'est compté. Le mode composé ne les compte pas (banque
   d'heures administratives, montants à préciser).
 - **Codes** : le répertoire des actes, avec recherche par code ou par mot,
-  et les formulaires de la CNESST.
+  les codes de vulnérabilité (20 catégories, libellés du guide de la FMOQ de 2017, avec la limite de cette source) et les formulaires de la CNESST.
 - **Loi 2** : l'estimateur du mode composé, ce qui change (les règles
   connues, en bref) et les documents (pages de la FMOQ et du gouvernement).
 - **Finances** : le budget, le patrimoine et l'impôt, avec « Budget ·
