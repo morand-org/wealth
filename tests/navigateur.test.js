@@ -302,7 +302,7 @@ async function logo(b, base) {
     typePng("icones/icone-512.png") === 6 && typePng("icones/icone-192.png") === 6 && typePng("icones/favicon-32.png") === 6
     && typePng("icones/icone-masquable-512.png") === 2 && typePng("icones/apple-touch-icon.png") === 2);
   const { ctx, p, erreurs } = await ouvrir(b, base, { page: "budget" });
-  verifier("en-tête : le lion seul", await p.evaluate(() => document.querySelector(".barre-haut .marque-ico use").getAttribute("href") === "#wm-lion"));
+  verifier("en-tête : le sceau du lion et le nom", await p.evaluate(() => document.querySelector(".barre-haut .marque-ico use").getAttribute("href") === "#wm-sceau" && document.querySelector(".barre-haut .marque-texte").textContent === "Wealth Morand"));
   verifier("nom : une étoile entre Wealth et Morand", await p.evaluate(() => !!document.querySelector("#wm-nom .etoile")));
   verifier("ouverture : un seul dessin au centre", await p.evaluate(() => document.querySelectorAll(".ouverture .ouverture-centre").length === 1
     && document.querySelector(".ouverture-centre").getAttribute("data-motif") === "#wm-g-cedre"));
