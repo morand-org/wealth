@@ -1267,3 +1267,14 @@ a.tuile:hover { border-color: var(--trait); }
   .nav { position: sticky; top: var(--haut-bande); height: calc(100vh - var(--haut-bande)); height: calc(100dvh - var(--haut-bande)); overflow-y: auto; overscroll-behavior: contain; }
   html { scroll-padding-top: calc(var(--haut-bande) + 24px); }
 }
+
+/* « Bêta » : un petit encadré aux coins arrondis, contour et texte dorés, intérieur transparent (comme « Installer
+   l'app » de l'accueil). À côté de Loi 2 : dans le menu, le titre de la page et, sur téléphone, sur l'icône. */
+.beta { display: inline-flex; align-items: center; flex: none; padding: 3px 7px 2px; border: 1px solid var(--or-texte); border-radius: 6px;
+  background: transparent; color: var(--or-texte); font: 600 9.5px/1.2 var(--police); letter-spacing: 0.16em; text-transform: uppercase; white-space: nowrap; }
+h1 .beta { margin-left: 12px; padding: 4px 9px 3px; font-size: 11px; vertical-align: 0.5em; }
+.nav a .beta { margin-left: 2px; }
+@media (max-width: 959px) {
+  .nav a[data-onglet="loi2"] { position: relative; }
+  .nav a .beta { position: absolute; top: 3px; left: calc(50% + 12px); margin: 0; padding: 1px 4px 0; border-radius: 4px; font-size: 7.5px; letter-spacing: 0.1em; }
+}

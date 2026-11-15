@@ -1751,6 +1751,13 @@ async function loi2(b, base) {
   verifier("Loi 2 : sa propre page (l'ancienne adresse y mène) ; Estimateur, Ce qui change, Documents ; montants non fixés, la page attend des hypothèses",
     v0.hash === "#loi2/estimateur" && v0.nav === "loi2" && v0.onglets.join() === "Estimateur,Ce qui change,Documents" && v0.vu
     && v0.statut.includes("document-cadre") && v0.statut.includes("pas les montants") && v0.res.includes("Inscrivez vos hypothèses") && !v0.debord, v0);
+  // « Bêta » : un encadré doré au contour, intérieur transparent, à côté de Loi 2 (titre et menu) ; sur téléphone, il ne couvre pas l'icône.
+  const beta = await p.evaluate(() => { const a = document.querySelector('.nav a[data-onglet="loi2"]'), e = a.querySelector(".beta"), h = document.querySelector("#h-loi2 .beta"),
+    r = e.getBoundingClientRect(), ic = a.querySelector("svg").getBoundingClientRect(), cs = getComputedStyle(e);
+    return { menu: a.textContent.trim(), titre: h && h.textContent, transparent: cs.backgroundColor === "rgba(0, 0, 0, 0)",
+      contour: cs.borderTopStyle === "solid" && cs.borderTopColor === cs.color, couvre: r.left < ic.right && r.right > ic.left && r.bottom > ic.top && r.top < ic.bottom, vu: r.width > 0 }; });
+  verifier("Loi 2 : « Bêta » à côté du nom (menu et titre), contour de la couleur du texte, intérieur transparent, sans couvrir l'icône",
+    beta.menu === "Loi 2 Bêta" && beta.titre === "Bêta" && beta.contour && beta.transparent && !beta.couvre && beta.vu, beta);
   verifier("Loi 2 : en GMF-U, l'enseignant peut garder son mode actuel ; à 60 ans aussi", v0.vise.includes("enseignant en GMF-U") && v0.vise.includes("60 ans"), v0.vise);
   await p.click("#loi2-calibrer"); await p.waitForTimeout(300);
   const cal = await p.evaluate(() => { const R = window.Wealthnord.resultats(), S = window.Wealthnord.etat(), x = window.Calc.revenuCompose(R.rev, S.loi2, { semaines: S.revenu.semaines, anneePEC: 3 });
@@ -1884,7 +1891,7 @@ async function repertoireActes(b, base) {
 async function revenuEtImpot(b, base) {
   const { ctx, p, erreurs } = await ouvrir(b, base, { page: "revenu" });
   const etat = () => p.evaluate(() => ({ hash: location.hash, nav: [...document.querySelectorAll(".nav > a[data-onglet]")].map(a => a.dataset.onglet),
-    noms: [...document.querySelectorAll(".nav > a[data-onglet]")].slice(0, 5).map(a => a.textContent.trim()),
+    noms: [...document.querySelectorAll(".nav > a[data-onglet]")].slice(0, 5).map(a => a.querySelector("span:not(.beta)").textContent.trim()),
     marque: (document.querySelector('.nav [aria-current="page"]') || {}).dataset?.onglet,
     section: [...document.querySelectorAll(".vue:not([hidden]) .onglets-section a")].map(a => `${a.textContent}${a.getAttribute("aria-current") === "page" ? "*" : ""}`) }));
   const rv = await etat();
