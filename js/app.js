@@ -655,6 +655,10 @@ window.Verrou.quandOuvert(function () {
     R.libelleNet = md => R.fraisPerso(md) > 0 ? "Net après impôt et frais" : "Net après impôt";
     R.nets = {};
     for (const md of R.modes) R.nets[md] = R.impots[md].net - R.fraisPerso(md);
+    // Mode composé (Loi 2) : frais de cabinet comme à l'acte (un pourcentage de la facturation, si la clinique en
+    // prélève dans le mode actuel), et net après impôt d'un revenu brut quelconque, pour le même ménage.
+    R.fraisCabinetCompose = total => mode === "acte" || S.revenu.fraisCabinetTousModes ? fraisCabinet(total, "acte") : 0;
+    R.netDe = (total, fraisCab = 0) => avec(impotDe({ ...base, depensesPro: R.depensesPro + fraisCab, revenu: total }))[0].net - (R.societeActive ? 0 : R.depensesPro + fraisCab);
     // Brut après frais de cabinet (avant impôt) : le chiffre mis en avant, celui qui classe les modes et donne les
     // écarts. À l'acte en clinique, la part remise à la clinique n'est pas un revenu ; ailleurs, c'est le brut.
     R.bruts = {};
@@ -1927,11 +1931,17 @@ window.Verrou.quandOuvert(function () {
   const LOI2_VIDE = { capitation: null, suppVulnerable: null, affilies: null, capitationAffilie: null, tarifVisite: null, tauxHoraire: null, heuresIndirectes: null, partOrphelins: null, anneePEC: null };
   // Entrée en vigueur estimée : environ 18 mois à compter de juin 2026 (résumé-synthèse), date à confirmer par la RAMQ.
   const LOI2_ENTREE = "2027-12";
+  // Les cinq montants de l'entente ; non inscrits, ils prennent notre estimé (scénario central), toujours marqué.
+  const LOI2_MONTANTS = ["capitation", "suppVulnerable", "capitationAffilie", "tarifVisite", "tauxHoraire"];
+  const vide = v => v === null || v === undefined || v === "";
   function hypothesesLoi2() {
     const o = C.COMPOSE.officiel, h = { ...LOI2_VIDE, ...(S.loi2 || {}) };
     if (o) return { ...h, ...o, officiel: true };
-    return { ...h, officiel: false };
+    const E = C.COMPOSE.estime;
+    LOI2_MONTANTS.forEach(k => { if (vide(h[k])) h[k] = E[k]; });
+    return { ...h, officiel: false, estime: LOI2_MONTANTS.every(k => +h[k] === E[k]) };
   }
+  const marqueLoi2 = h => h.officiel ? "officiel" : h.estime ? "notre estimé" : "vos hypothèses";
   /* Année de prise en charge au passage : celle choisie ; sinon, selon le début de la pratique (résidence), ou la première
      année calculée ; sinon plus tard (sans majoration). */
   function anneePECLoi2(R) {
@@ -1944,6 +1954,7 @@ window.Verrou.quandOuvert(function () {
   function rendrePageLoi2(R) {
     const cle = sousChoisi("loi2");
     if (cle === "estimateur") rendreLoi2(R);
+    else if (cle === "choix") rendreChoixLoi2(R);
     else if (cle === "regles") rendreReglesLoi2();
     else rendreDocumentsLoi2();
   }
@@ -1977,7 +1988,7 @@ window.Verrou.quandOuvert(function () {
         S.loi2 = { ...LOI2_VIDE, ...Object.fromEntries(Object.entries(c).map(([k, v]) => [k, r2(v)])), ...garde }; S.meta.exemple = false; sauver(); tout();
         toast("Hypothèses calculées : le brut de votre mode actuel, réparti 50-30-20.");
       });
-      const eff = el("button", "bouton secondaire", "Effacer mes hypothèses"); eff.type = "button"; eff.id = "loi2-effacer";
+      const eff = el("button", "bouton secondaire", "Effacer mes changements"); eff.type = "button"; eff.id = "loi2-effacer";
       eff.addEventListener("click", () => { S.loi2 = { ...LOI2_VIDE, anneePEC: (S.loi2 || {}).anneePEC ?? null }; sauver(); tout(); });
       a.append(est, cal, eff);
       // Comment on a calculé notre estimé : replié, à côté des boutons.
@@ -1999,7 +2010,7 @@ window.Verrou.quandOuvert(function () {
     }
     document.getElementById("loi2-statut").textContent = o
       ? `Montants officiels du ${dateLongue(o.date)} (${o.source}).`
-      : "L'architecture est fixée (document-cadre de la FMOQ et du gouvernement), pas les montants. En attendant, le calcul suit vos hypothèses : appliquez notre estimé, partez de votre revenu actuel, ou inscrivez les vôtres. Dès leur publication, l'app prendra les montants officiels.";
+      : "L'architecture est fixée (document-cadre de la FMOQ et du gouvernement), pas les montants. En attendant, le calcul part de notre estimé, qui n'est pas officiel : changez les montants à votre guise, ou partez de votre revenu actuel. Dès leur publication, l'app prendra les montants officiels.";
     rangees("loi2-parts", [
       { titre: "Capitation", sous: "Par patient associé ou affilié, selon son profil, chaque année", valeur: pct(P.capitation, 0) },
       { titre: "Actes", sous: "Chaque visite, à un tarif unique", valeur: pct(P.actes, 0) },
@@ -2032,11 +2043,14 @@ window.Verrou.quandOuvert(function () {
       { p: "loi2.affilies", l: "Patients affiliés qui vous reviennent", u: "pat.", s: 10, h: "Votre part des inscrits collectifs de votre milieu, payée à un tarif fixe." },
       { p: "loi2.capitationAffilie", l: "Capitation par patient affilié", u: "$/an", s: 1 },
       avecSrv && { p: "loi2.partOrphelins", l: "Sans rendez-vous : patients orphelins", u: "%", s: 5, h: "Leurs visites restent payées à 100 % du tarif actuel. Les autres passent au tarif unique." },
-    ].filter(Boolean), d => d.p === "loi2.partOrphelins" && (S.loi2 || {}).partOrphelins == null ? 100 : lire(d.p));
+    ].filter(Boolean), d => {
+      const k = d.p.slice(5);
+      if (k === "partOrphelins" && (S.loi2 || {}).partOrphelins == null) return 100;
+      return LOI2_MONTANTS.includes(k) && vide(lire(d.p)) ? C.COMPOSE.estime[k] : lire(d.p);
+    });
     const h = hypothesesLoi2(), x = C.revenuCompose(R.rev, h, optionsLoi2(R)), z = document.getElementById("loi2-resultat"); z.textContent = "";
     // Les cinq montants de notre estimé, tels quels : marqués « notre estimé » ; dès qu'un change, « hypothèse ».
-    const E = C.COMPOSE.estime, estime = ["capitation", "suppVulnerable", "capitationAffilie", "tarifVisite", "tauxHoraire"].every(k => +h[k] === E[k] && h[k] !== null && h[k] !== "");
-    const marque = h.officiel ? "officiel" : estime ? "notre estimé" : "hypothèse", actuel = R.rev[R.mode].total;
+    const marque = h.officiel ? "officiel" : h.estime ? "notre estimé" : "hypothèse", actuel = R.rev[R.mode].total;
     if (x.premiereLigne <= 0) z.appendChild(el("p", "aide", "Inscrivez vos hypothèses, ou partez de votre revenu actuel, pour voir votre revenu au mode composé."));
     else {
       const garantie = C.garantieCompose(x.total, actuel), majT = x.maj > 1.0001 ? ` · majoré de ${nb((x.maj - 1) * 100, 1)} % (territoire)` : "";
@@ -2057,6 +2071,84 @@ window.Verrou.quandOuvert(function () {
     document.getElementById("loi2-note").textContent = `Parts de l'entente : capitation ${pct(P.capitation, 0)}, actes ${pct(P.actes, 0)}, composante horaire ${pct(P.horaire, 0)} ; sans plafond trimestriel, avec la majoration du territoire (annexes XII et XII-A). `
       + "Hypothèses de l'app, en attendant les règles : la capitation remplace les forfaits d'inscription, de volume et GMF ; « Partir de mon revenu actuel » répartit la capitation selon l'exemple de table actuarielle de la FMOQ (un patient vulnérable 1,7 à 2,5 fois un non vulnérable selon son groupe, un affilié aux deux tiers), qui n'est pas un barème ; les visites des apprenants sont remplacées par la supervision à 100 % ; le reste ne change pas. "
       + "Sources : FMOQ, « Modèle de rémunération composé en première ligne », résumé-synthèse (octobre 2026) et capsule explicative (2026) ; entente de principe du 10 décembre 2025. Montants avant les frais et l'impôt.";
+  }
+  /* Mon choix : votre rémunération actuelle face au mode composé, avec les mêmes données (patients, demi-journées,
+     heures). Un verdict, un duel côte à côte (brut, net, écart) et la composition des deux revenus, sur la même échelle.
+     En GMF-U, l'enseignant pourra garder son mode actuel : la part de l'enseignement est montrée à part. */
+  function rendreChoixLoi2(R) {
+    const carte = document.getElementById("l2-choix"); carte.textContent = "";
+    const h = hypothesesLoi2(), x = C.revenuCompose(R.rev, h, optionsLoi2(R)), md = R.mode, g = R.rev, A = g[md];
+    const gmfu = S.revenu.milieu === "gmfu", marque = marqueLoi2(h), SEUIL = 500;
+    const tete = el("div", "carte-tete"); tete.appendChild(el("h2", null, gmfu ? "Garder mon mode ou passer au mode composé ?" : "Aujourd'hui et avec la Loi 2"));
+    carte.appendChild(tete);
+    if (x.premiereLigne <= 0) { carte.appendChild(el("p", "aide", "Inscrivez vos patients et vos demi-journées dans Revenu pour comparer.")); return; }
+    const fcL = R.fraisCabinetCompose(x.total), brutL = x.total - fcL, netL = R.netDe(x.total, fcL);
+    const brutA = R.bruts[md], netA = R.nets[md], ecart = brutL - brutA, ecartNet = netL - netA;
+    const arrondi = v => $(Math.round(Math.abs(v) / 100) * 100), nomMode = NOM_MODE[md].toLowerCase();
+    // Le verdict : en GMF-U, un choix ; ailleurs, ce qui changera.
+    const verdict = el("p", "l2-verdict"); verdict.id = "l2-verdict";
+    verdict.textContent = gmfu
+      ? (ecart < -SEUIL ? `Garder votre mode actuel (${nomMode}) vous rapporterait environ ${arrondi(ecart)} de plus par an.`
+        : ecart > SEUIL ? `Passer au mode composé vous rapporterait environ ${arrondi(ecart)} de plus par an.`
+          : "Les deux se valent : moins de 500 $ d'écart par an.")
+      : (Math.abs(ecart) <= SEUIL ? "Avec la Loi 2, votre revenu resterait à peu près le même."
+        : `Avec la Loi 2, votre revenu brut ${ecart > 0 ? "augmenterait" : "baisserait"} d'environ ${arrondi(ecart)} par an.`);
+    const garantie = C.garantieCompose(x.total, A.total);
+    const precision = el("p", "aide l2-precision");
+    precision.append(`Estimation : les montants de la Loi 2 ne sont pas encore fixés. Calcul avec ${h.officiel ? "les montants officiels" : h.estime ? "notre estimé (scénario central)" : "vos hypothèses"}. `);
+    const lien = el("a", null, "Changer les montants"); lien.href = "#loi2/estimateur"; precision.append(lien, ". ");
+    precision.append(gmfu ? "Comme médecin enseignant en GMF-U, vous pourrez choisir de garder votre mode actuel."
+      : "Le mode composé deviendra votre mode de rémunération ; à 60 ans ou plus à son entrée en vigueur, vous pourrez garder l'actuel.");
+    if (garantie > 0.5) precision.append(` La première année, la garantie de revenu de 12 mois comblerait l'écart (${$(garantie)}).`);
+    carte.append(verdict, precision);
+    // Le duel : deux colonnes, l'écart au milieu ; la colonne la plus payante, filet doré.
+    const duel = el("div", "l2-duel"); duel.id = "l2-duel";
+    const cote = (sur, nom, brut, net, lib, gagne, pastille) => {
+      const c = el("div", "l2-cote" + (gagne ? " gagnant" : ""));
+      c.append(el("p", "l2-sur", sur), el("p", "l2-mode", nom), el("p", "l2-montant", $(brut)), el("p", "l2-lib", lib), el("p", "l2-net", `${R.libelleNet(md)} : ${$(net)}`));
+      if (pastille) c.appendChild(el("span", "l2-pastille", pastille));
+      return c;
+    };
+    const milieu = el("div", "l2-ecart");
+    milieu.append(el("span", "l2-ecart-val", signe(ecart)), el("span", "l2-ecart-lib", "par an avec la Loi 2"), el("span", "l2-ecart-net", `net ${signe(ecartNet)}`));
+    duel.append(cote("Aujourd'hui", NOM_MODE[md], brutA, netA, R.libelleBrut(md), ecart < -SEUIL, null), milieu,
+      cote("Loi 2", "Mode composé", brutL, netL, fcL > 0.5 ? "brut après frais de cabinet" : "brut", ecart > SEUIL, marque));
+    carte.appendChild(duel);
+    // Ce qui compose chaque revenu, avant frais de cabinet. Mêmes couleurs pour l'enseignement et le reste, inchangé.
+    const ensA = Math.max(0, (g.enseignementModes || {})[md] || 0), resteA = x.inchanges;
+    const forfaitsA = (A.forfaitInscription || 0) + (A.forfaitVulnerable || 0) + (A.forfaitGmf || 0) + (A.supplements || 0) + (A.volume || 0);
+    const cliniqueA = Math.max(0, A.total - forfaitsA - resteA - ensA);
+    const partsA = [["clinique", md === "horaire" ? "Heures et forfaits de responsabilité" : md === "mixte" ? "Forfait horaire et visites" : "Visites", cliniqueA],
+      ["forfaits", "Forfaits (inscription, vulnérabilité, GMF, volume)", forfaitsA], ["enseignement", "Enseignement", ensA], ["reste", "Le reste, inchangé", resteA]];
+    const partsL = [["capitation", "Capitation", x.capitation], ["actes", "Actes", x.actes], ["horaire", "Composante horaire", x.horaire],
+      ["orphelins", "Patients orphelins, à 100 %", x.orphelins], ["enseignement", "Enseignement, à 100 %", x.enseignement], ["reste", "Le reste, inchangé", x.inchanges]];
+    const max = Math.max(1, A.total, x.total);
+    const barre = (titre, total, parts) => {
+      const b = el("div", "l2-compo-ligne"), t = el("div", "l2-compo-tete"), visibles = parts.filter(p => p[2] > 0.5);
+      t.append(el("span", "l2-compo-nom", titre), el("span", "l2-compo-total", $(total)));
+      const piste = el("div", "l2-piste"); piste.setAttribute("role", "img");
+      piste.setAttribute("aria-label", `${titre} : ${visibles.map(([, n, v]) => `${n}, ${$(v)}`).join(" ; ")}`);
+      visibles.forEach(([k, n, v]) => { const sg = el("span", "seg seg-" + k); sg.style.width = (v / max * 100) + "%"; sg.title = `${n} : ${$(v)}`; piste.appendChild(sg); });
+      const leg = el("ul", "l2-legende");
+      visibles.forEach(([k, n, v]) => { const li = el("li"); li.append(el("i", "seg-" + k), el("span", null, n), el("b", null, $(v))); leg.appendChild(li); });
+      b.append(t, piste, leg); return b;
+    };
+    const compo = el("div", "l2-compo"); compo.id = "l2-compo";
+    compo.append(el("h3", "sous-titre", "De quoi est fait chaque revenu"), barre(`Aujourd'hui, ${nomMode}`, A.total, partsA), barre("Loi 2, mode composé", x.total, partsL));
+    // GMF-U : l'enseignement à part, puis la partie clinique, celle qui change vraiment.
+    if (gmfu && (ensA > 0.5 || x.enseignement > 0.5)) {
+      const cliniqueL = x.total - x.enseignement - x.inchanges, cliniqueAuj = A.total - ensA - resteA;
+      const ens = el("div", "l2-enseignement"); ens.id = "l2-enseignement";
+      ens.append(el("h3", "sous-titre", "La part de l'enseignement"), rangees(el("div"), [
+        { titre: "Enseignement aujourd'hui", sous: `Supervision et visites des apprenants, ${AU_MODE[md]}`, valeur: $(ensA) },
+        { titre: "Enseignement avec la Loi 2", sous: "Payé à 100 % du tarif (EP 42), hors du 50-30-20", valeur: $(x.enseignement) },
+        { titre: "Partie clinique aujourd'hui", sous: "Vos patients : visites, heures et forfaits", valeur: $(cliniqueAuj) },
+        { titre: "Partie clinique avec la Loi 2", sous: "Capitation, actes, composante horaire et orphelins", valeur: $(cliniqueL) },
+      ]), el("p", "conclusion", `L'enseignement reste payé à part ; c'est la partie clinique qui change : ${signe(cliniqueL - cliniqueAuj)} par an.`));
+      carte.appendChild(ens);
+    }
+    carte.append(compo, el("p", "aide", "Les deux colonnes partent des mêmes données : vos patients, vos demi-journées et vos heures (page Revenu). Brut avant impôt ; "
+      + "net après impôt" + (R.fraisPerso(md) > 0 ? " et frais" : "") + ". Frais de cabinet du mode composé : le même pourcentage qu'aujourd'hui, appliqué à sa facturation (hypothèse)."));
   }
   // Ce qui change : les règles connues, en bref, avec leur source. Construit une fois (le texte ne dépend pas du plan).
   function rendreReglesLoi2() {
@@ -4279,7 +4371,7 @@ window.Verrou.quandOuvert(function () {
      gardé sur cet appareil ; une adresse comme #budget/dettes ouvre directement un sous-onglet. */
   const SOUS_ONGLETS = {
     comparer: [["modes", "Modes"], ["demijournee", "Demi-journée"], ["actes", "Actes"], ["offres", "Offres"]],
-    loi2: [["estimateur", "Estimateur"], ["regles", "Ce qui change"], ["documents", "Documents"]],
+    loi2: [["estimateur", "Estimateur"], ["choix", "Mon choix"], ["regles", "Ce qui change"], ["documents", "Documents"]],
     budget: [["mois", "Ce mois-ci"], ["annee", "L'année"], ["dettes", "Dettes"]],
     avenir: [["aujourdhui", "Aujourd'hui"], ["projection", "Projection"], ["placements", "Placements"], ["proches", "Proches"]],
   };

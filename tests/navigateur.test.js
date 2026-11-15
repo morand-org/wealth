@@ -1748,9 +1748,11 @@ async function loi2(b, base) {
     nav: (document.querySelector('.nav [aria-current="page"]') || {}).dataset?.onglet, vise: document.getElementById("loi2-vise").textContent,
     debord: document.documentElement.scrollWidth > document.documentElement.clientWidth }));
   const v0 = await lire();
-  verifier("Loi 2 : sa propre page (l'ancienne adresse y mène) ; Estimateur, Ce qui change, Documents ; montants non fixés, la page attend des hypothèses",
-    v0.hash === "#loi2/estimateur" && v0.nav === "loi2" && v0.onglets.join() === "Estimateur,Ce qui change,Documents" && v0.vu
-    && v0.statut.includes("document-cadre") && v0.statut.includes("pas les montants") && v0.res.includes("Inscrivez vos hypothèses") && !v0.debord, v0);
+  verifier("Loi 2 : sa propre page (l'ancienne adresse y mène) ; Estimateur, Mon choix, Ce qui change, Documents ; montants non fixés, notre estimé par défaut",
+    v0.hash === "#loi2/estimateur" && v0.nav === "loi2" && v0.onglets.join() === "Estimateur,Mon choix,Ce qui change,Documents" && v0.vu
+    && v0.statut.includes("document-cadre") && v0.statut.includes("pas les montants") && v0.res.includes("notre estimé") && !v0.debord, v0);
+  const champs0 = await p.evaluate(() => ["capitation", "tarifVisite", "tauxHoraire"].map(k => document.getElementById("rapide-loi2-" + k).value));
+  verifier("Loi 2 : les champs montrent notre estimé tant que rien n'est inscrit", champs0.join() === "78,27,28", champs0);
   // « Bêta » : un encadré doré au contour, intérieur transparent, à côté de Loi 2 (titre et menu) ; sur téléphone, il ne couvre pas l'icône.
   const beta = await p.evaluate(() => { const a = document.querySelector('.nav a[data-onglet="loi2"]'), e = a.querySelector(".beta"), h = document.querySelector("#h-loi2 .beta"),
     r = e.getBoundingClientRect(), ic = a.querySelector("svg").getBoundingClientRect(), cs = getComputedStyle(e);
@@ -1786,7 +1788,31 @@ async function loi2(b, base) {
   const garantie = await p.evaluate(() => document.getElementById("loi2-resultat").textContent);
   verifier("Loi 2 : sous l'ancien mode, la garantie de revenu de 12 mois s'affiche", garantie.includes("Garantie de revenu"), garantie.slice(0, 200));
   await p.click("#loi2-effacer"); await p.waitForTimeout(300);
-  verifier("Loi 2 : « Effacer mes hypothèses » revient à l'attente", (await lire()).res.includes("Inscrivez vos hypothèses"));
+  verifier("Loi 2 : « Effacer mes changements » revient à notre estimé", (await lire()).res.includes("notre estimé"));
+  // Mon choix : en GMF-U, un verdict ; le duel (aujourd'hui, Loi 2, écart) ; la part de l'enseignement ; la composition.
+  await remplacer(p, { "revenu.enseignement": 3, "revenu.residents": 1 });
+  await allerA(p, "loi2/choix");
+  const ch = await p.evaluate(() => {
+    const R = window.Wealthnord.resultats(), t = id => (document.getElementById(id) || {}).textContent || "";
+    const montants = [...document.querySelectorAll("#l2-duel .l2-montant")].map(e => +e.textContent.replace(/[^0-9]/g, ""));
+    const v = t("l2-duel").length ? document.querySelector("#l2-duel .l2-ecart-val").textContent : "", ecart = v ? [null, v.trim()[0], v] : null;
+    return { verdict: t("l2-verdict"), montants, brutA: Math.round(R.bruts[R.mode]), ecart: ecart && (ecart[1] === "−" ? -1 : 1) * +ecart[2].replace(/\D/g, ""),
+      ens: t("l2-enseignement"), compo: document.querySelectorAll("#l2-compo .l2-piste").length, segs: document.querySelectorAll("#l2-compo .seg").length,
+      pastille: t("l2-duel").includes("notre estimé"), vu: !!document.getElementById("l2-choix").offsetParent, debord: document.documentElement.scrollWidth > document.documentElement.clientWidth };
+  });
+  verifier("Loi 2, Mon choix : verdict de GMF-U (garder ou passer), duel aujourd'hui / Loi 2 cohérent avec l'écart, marqué « notre estimé »",
+    ch.vu && /^(Garder votre mode actuel|Passer au mode composé|Les deux se valent)/.test(ch.verdict) && ch.montants.length === 2 && Math.abs(ch.montants[0] - ch.brutA) <= 1
+    && Math.abs(ch.montants[1] - ch.montants[0] - ch.ecart) <= 2 && ch.pastille && !ch.debord, ch);
+  verifier("Loi 2, Mon choix : en GMF-U, la part de l'enseignement (à 100 %, hors du 50-30-20) et la partie clinique ; deux barres de composition",
+    ch.ens.includes("Enseignement avec la Loi 2") && ch.ens.includes("100 %") && ch.ens.includes("partie clinique") && ch.compo === 2 && ch.segs >= 5, ch);
+  await remplacer(p, { "revenu.milieu": "gmf" });
+  await allerA(p, "loi2/choix");
+  const gmf = await p.evaluate(() => ({ verdict: (document.getElementById("l2-verdict") || {}).textContent || "", ens: !!document.getElementById("l2-enseignement"),
+    precision: (document.querySelector("#l2-choix .l2-precision") || {}).textContent || "", carte: document.getElementById("l2-choix").textContent.slice(0, 160), hash: location.hash }));
+  verifier("Loi 2, Mon choix : hors GMF-U, ce qui changera (pas de choix), sans section d'enseignement ; 60 ans et plus mentionné",
+    /^Avec la Loi 2, votre revenu/.test(gmf.verdict) && !gmf.ens && gmf.precision.includes("60 ans"), gmf);
+  await remplacer(p, { "revenu.milieu": "gmfu" });
+  await allerA(p, "loi2/estimateur");
   await allerA(p, "loi2/regles");
   const regles = await p.evaluate(() => ({ t: document.getElementById("l2-regles").textContent, vu: !!document.getElementById("l2-regles").offsetParent, est: !!document.getElementById("cp-loi2").offsetParent }));
   verifier("Loi 2 : « Ce qui change » : orphelins et enseignement à 100 %, majoration 500 puis 750, 14 h, plafonds, 13 semaines",

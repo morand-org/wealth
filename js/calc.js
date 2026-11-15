@@ -505,6 +505,12 @@
       // enseignement à 100 % (EP 42 : l'intervention de supervision, ou les visites des apprenants si la personne les facture).
       maj, nbSrv: W * SRV * patientsSRV, valeurSrv: visitesSrv * maj,
       supervisionCent: visitesApprenants ? visitesAppr * maj : W * T * heuresSup * m("acteSupervision") * maj,
+      // Part de l'enseignement dans chaque mode actuel (pour comparer à la Loi 2) : à l'acte, les visites des apprenants ;
+      // au mixte, l'intervention de supervision (ou ces visites au pourcentage du mixte) ; au taux horaire, les heures
+      // des demi-journées d'enseignement (sans tenir compte du plafond annuel).
+      enseignementModes: { acte: (visitesAppr + visitesPendant) * maj * pctActe / 100,
+        mixte: mixte.supervision + (visitesApprenants ? (visitesAppr + visitesPendant) * maj * m("pctMixte") / 100 : 0),
+        horaire: W * T * H * m("tarifHoraire") * maj },
       horaire, mixte, acte, ecart: mixte.total - horaire.total, seuilPatients: seuil, seuilActe, seuilMixte, seuilActeMixte, seuilActeMixteApresFrais, demiJourneeClinique };
   }
 

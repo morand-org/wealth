@@ -1282,3 +1282,56 @@ h1 .beta { margin-left: 12px; padding: 4px 9px 3px; font-size: 11px; vertical-al
 /* Loi 2 : comment nous avons calculé notre estimé (liste numérotée dans le repli). */
 .loi2-etapes { margin: 4px 0 10px; padding-left: 1.3em; font-size: 0.9rem; line-height: 1.5; color: var(--discret); }
 .loi2-etapes li + li { margin-top: 6px; }
+
+/* Loi 2, « Mon choix » : verdict, duel côte à côte et composition des deux revenus.
+   Couleurs : le mode actuel en gris chaud, le mode composé en champagne (capitation, actes, heures du plus foncé au plus
+   clair) ; l'enseignement et les orphelins en ardoise, le reste inchangé en pâle, les mêmes des deux côtés. */
+:root {
+  --l2-clinique: #8f8a7e; --l2-forfaits: #bcb6a8; --l2-capitation: #8a6b2a; --l2-actes: #c9a35c; --l2-horaire: #e6d3a3;
+  --l2-orphelins: #a9b6bd; --l2-enseignement: #5d7280; --l2-reste: #dcd8cd;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --l2-clinique: #8d887c; --l2-forfaits: #5c5850; --l2-capitation: #e3cc94; --l2-actes: #b8924a; --l2-horaire: #7a6236;
+  --l2-orphelins: #6f7f88; --l2-enseignement: #a3b6c2; --l2-reste: #34332f; } }
+:root[data-theme="dark"] {
+  --l2-clinique: #8d887c; --l2-forfaits: #5c5850; --l2-capitation: #e3cc94; --l2-actes: #b8924a; --l2-horaire: #7a6236;
+  --l2-orphelins: #6f7f88; --l2-enseignement: #a3b6c2; --l2-reste: #34332f;
+}
+.l2-verdict { margin: 2px 0 8px; font: 450 1.42rem/1.3 var(--police-titre); letter-spacing: -0.01em; color: var(--encre); text-wrap: balance; }
+.l2-precision a { color: var(--or-texte); text-decoration: underline; text-underline-offset: 2px; }
+.l2-duel { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; gap: 14px; margin: 18px 0 8px; }
+.l2-cote { position: relative; padding: 18px 20px 16px; border: 1px solid var(--ligne); border-radius: var(--rayon-petit); background: var(--surface); }
+.l2-cote.gagnant { border-color: var(--marque); box-shadow: inset 0 3px 0 var(--marque); }
+.l2-sur { margin: 0; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--or-texte); }
+.l2-mode { margin: 4px 0 10px; font-size: 0.92rem; color: var(--encre-2); }
+.l2-montant { margin: 0; font: 450 2.1rem/1.05 var(--police-titre); letter-spacing: -0.015em; color: var(--encre); font-variant-numeric: tabular-nums; }
+.l2-lib { margin: 4px 0 0; font-size: 0.8rem; color: var(--discret); }
+.l2-net { margin: 10px 0 0; padding-top: 10px; border-top: 1px solid var(--grille); font-size: 0.9rem; color: var(--encre-2); font-variant-numeric: tabular-nums; }
+.l2-pastille { position: absolute; top: 16px; right: 16px; padding: 2px 8px 1px; border: 1px solid var(--or-texte); border-radius: 6px; color: var(--or-texte);
+  font-size: 0.66rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+.l2-ecart { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 120px; text-align: center; }
+.l2-ecart-val { padding: 7px 14px; border-radius: 999px; background: var(--or-piste); color: var(--or-texte); font: 600 1.08rem/1.1 var(--police); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.l2-ecart-lib, .l2-ecart-net { font-size: 0.78rem; color: var(--discret); }
+.l2-compo { margin-top: 18px; }
+.l2-compo-ligne + .l2-compo-ligne { margin-top: 16px; }
+.l2-compo-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 6px; font-size: 0.92rem; }
+.l2-compo-nom { color: var(--encre-2); }
+.l2-compo-total { font-weight: 600; font-variant-numeric: tabular-nums; }
+.l2-piste { display: flex; height: 16px; border-radius: 999px; overflow: hidden; }
+.l2-piste .seg { height: 100%; flex: none; }
+.l2-piste .seg + .seg { box-shadow: inset 2px 0 0 var(--surface); }
+.l2-legende { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 4px 18px; margin: 8px 0 0; padding: 0; list-style: none; font-size: 0.82rem; color: var(--encre-2); }
+.l2-legende li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.l2-legende i { width: 10px; height: 10px; border-radius: 3px; }
+.l2-legende b { font-weight: 500; font-variant-numeric: tabular-nums; }
+.seg-clinique { background: var(--l2-clinique); } .seg-forfaits { background: var(--l2-forfaits); } .seg-capitation { background: var(--l2-capitation); }
+.seg-actes { background: var(--l2-actes); } .seg-horaire { background: var(--l2-horaire); } .seg-orphelins { background: var(--l2-orphelins); }
+.seg-enseignement { background: var(--l2-enseignement); } .seg-reste { background: var(--l2-reste); }
+.l2-enseignement { margin-top: 18px; }
+@media (max-width: 640px) {
+  .l2-duel { grid-template-columns: 1fr; gap: 10px; }
+  .l2-ecart { flex-direction: row; flex-wrap: wrap; gap: 4px 10px; min-width: 0; }
+  .l2-montant { font-size: 1.9rem; }
+  .l2-verdict { font-size: 1.25rem; }
+  .l2-legende { grid-template-columns: 1fr; }
+}
