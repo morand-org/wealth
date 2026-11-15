@@ -1759,6 +1759,16 @@ async function loi2(b, base) {
   verifier("Loi 2 : « Bêta » à côté du nom (menu et titre), contour de la couleur du texte, intérieur transparent, sans couvrir l'icône",
     beta.menu === "Loi 2 Bêta" && beta.titre === "Bêta" && beta.contour && beta.transparent && !beta.couvre && beta.vu, beta);
   verifier("Loi 2 : en GMF-U, l'enseignant peut garder son mode actuel ; à 60 ans aussi", v0.vise.includes("enseignant en GMF-U") && v0.vise.includes("60 ans"), v0.vise);
+  // Notre estimé : les cinq montants d'un clic, marqués « notre estimé », avec le calcul dans un repli ; modifiables ensuite.
+  await p.click("#loi2-estime"); await p.waitForTimeout(300);
+  const est = await p.evaluate(() => { const S = window.Wealthnord.etat(), E = window.Calc.COMPOSE.estime, d = document.getElementById("loi2-estime-calcul");
+    return { h: ["capitation", "suppVulnerable", "capitationAffilie", "tarifVisite", "tauxHoraire"].map(k => S.loi2[k]), e: [E.capitation, E.suppVulnerable, E.capitationAffilie, E.tarifVisite, E.tauxHoraire],
+      res: document.getElementById("loi2-resultat").textContent, calcul: d.textContent, ferme: !d.open, vu: !!d.offsetParent }; });
+  verifier("Loi 2 : « Appliquer notre estimé » remplit les cinq montants, marqués « notre estimé » ; le calcul est dans un repli",
+    est.h.join() === est.e.join() && est.res.includes("notre estimé") && est.ferme && est.vu && est.calcul.includes("pas un montant officiel") && est.calcul.includes("1,51 G$") && est.calcul.includes("Fourchette"), est);
+  await p.fill("#rapide-loi2-tauxHoraire", "30"); await p.waitForTimeout(400);
+  const modif = await p.evaluate(() => ({ h: window.Wealthnord.etat().loi2.tauxHoraire, res: document.getElementById("loi2-resultat").textContent }));
+  verifier("Loi 2 : un montant de l'estimé modifié devient une « hypothèse »", modif.h === 30 && modif.res.includes("hypothèse") && !modif.res.includes("notre estimé"), modif);
   await p.click("#loi2-calibrer"); await p.waitForTimeout(300);
   const cal = await p.evaluate(() => { const R = window.Wealthnord.resultats(), S = window.Wealthnord.etat(), x = window.Calc.revenuCompose(R.rev, S.loi2, { semaines: S.revenu.semaines, anneePEC: 3 });
     return { total: x.total, cible: R.rev[R.mode].total, parts: x.parts, orph: x.orphelins, affilie: S.loi2.capitationAffilie / S.loi2.capitation, texte: document.getElementById("loi2-resultat").textContent }; });

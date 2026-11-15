@@ -629,6 +629,14 @@ verifier("transition incorporée : une seule déclaration paie davantage, et gar
 {
   const g = C.revenuGmfu({ ...rev, inscritsDebut: 1000, partVulnerable: 30 });
   verifier("Loi 2 : parts de l'entente 50-30-20, aucun montant officiel publié", C.COMPOSE.parts.capitation === 0.5 && C.COMPOSE.parts.actes === 0.3 && C.COMPOSE.parts.horaire === 0.2 && C.COMPOSE.officiel === null);
+  // Notre estimé (scénario central) : chaque montant découle du budget et des volumes inscrits, à 1 $ près.
+  {
+    const E = C.COMPOSE.estime, B = E.budgetBase * (1 + E.hausse), u = E.associes * (1 + E.partVulnerables) + E.affilies * 0.67;
+    const cap = B * 0.5 * (1 - E.reserve) / u, moy = B * 0.3 / E.visites, taux = B * 0.2 / E.heures;
+    verifier("Loi 2, notre estimé : budget, capitation, moyenne par interaction et taux horaire cohérents (à 1 $ près)",
+      Math.abs(B - E.budget) < 5e6 && Math.abs(cap - E.capitation) < 1 && E.suppVulnerable === E.capitation && Math.abs(cap * 0.67 - E.capitationAffilie) < 1
+      && Math.abs(moy - E.tarifVisite) < 1 && Math.abs(taux - E.tauxHoraire) < 1, { B, cap, moy, taux });
+  }
   // Document-cadre (FMOQ, résumé-synthèse d'octobre 2026) : capitation des associés et des affiliés, visite à tarif unique,
   // heures directes et indirectes, majoration des nouveaux médecins sur 500 patients, garantie de revenu.
   const p = { capitation: 100, suppVulnerable: 20, affilies: 50, capitationAffilie: 40, tarifVisite: 30, tauxHoraire: 50, heuresIndirectes: 4 };

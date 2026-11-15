@@ -1961,6 +1961,14 @@ window.Verrou.quandOuvert(function () {
       const titreH = el("h3", "sous-titre", "Vos hypothèses"); titreH.id = "loi2-titre-hyp";
       const champs = el("div", "champs-rapides"); champs.id = "loi2-champs";
       const a = el("div", "actions"), cal = el("button", "bouton secondaire", "Partir de mon revenu actuel"); cal.type = "button"; cal.id = "loi2-calibrer";
+      // Notre estimé : les cinq montants d'un clic ; les champs restent modifiables (le reste de vos hypothèses est gardé).
+      const est = el("button", "bouton", "Appliquer notre estimé"); est.type = "button"; est.id = "loi2-estime";
+      est.addEventListener("click", () => {
+        const E = C.COMPOSE.estime, h = S.loi2 || {};
+        S.loi2 = { ...LOI2_VIDE, ...h, capitation: E.capitation, suppVulnerable: E.suppVulnerable, capitationAffilie: E.capitationAffilie, tarifVisite: E.tarifVisite, tauxHoraire: E.tauxHoraire };
+        S.meta.exemple = false; sauver(); tout();
+        toast("Notre estimé est appliqué. Ce n'est pas un montant officiel : modifiez-le au besoin.");
+      });
       cal.addEventListener("click", () => {
         const h = S.loi2 || {}, r = S.revenu, garde = { anneePEC: h.anneePEC ?? null };
         const op = { ...optionsLoi2(R), heuresIndirectes: +h.heuresIndirectes || 0, affilies: +h.affilies || 0, partOrphelins: h.partOrphelins,
@@ -1971,14 +1979,27 @@ window.Verrou.quandOuvert(function () {
       });
       const eff = el("button", "bouton secondaire", "Effacer mes hypothèses"); eff.type = "button"; eff.id = "loi2-effacer";
       eff.addEventListener("click", () => { S.loi2 = { ...LOI2_VIDE, anneePEC: (S.loi2 || {}).anneePEC ?? null }; sauver(); tout(); });
-      a.append(cal, eff);
+      a.append(est, cal, eff);
+      // Comment on a calculé notre estimé : replié, à côté des boutons.
+      const E = C.COMPOSE.estime, M$ = x => `${nb(x / 1e6, 0)} M$`, G$ = x => `${nb(x / 1e9, 2)} G$`;
+      const calcul = el("details", "plus-loin"); calcul.id = "loi2-estime-calcul";
+      const etapes = el("ol", "loi2-etapes");
+      [`Budget du mode composé : la rémunération de première ligne visée, ${G$(E.budgetBase)} sans la coupe de 13,04 %, augmentée de ${nb(E.hausse * 100, 0)} % par l'entente, soit ${G$(E.budget)} par an.`,
+        `Capitation (50 %, moins ${nb(E.reserve * 100, 0)} % réservés à la majoration des nouveaux médecins et aux suppléments) partagée entre ${nb(E.associes / 1e6, 2)} M patients associés (${nb(E.partVulnerables * 100, 0)} % vulnérables, comptés double) et ${nb(E.affilies / 1e6, 2)} M affiliés (aux deux tiers) : ${$(E.capitation)} par associé non vulnérable, ${$(E.capitation + E.suppVulnerable)} par vulnérable, ${$(E.capitationAffilie)} par affilié.`,
+        `Actes (30 %, ${M$(E.budget * 0.3)}) pour ${nb(E.visites / 1e6, 1)} M interactions : ${$(E.tarifVisite)} en moyenne par interaction (${$(E.visiteStandard)} la visite standard, ${$(E.visiteComplexe)} la complexe, ${$(E.visiteDomicile)} à domicile).`,
+        `Composante horaire (20 %, ${M$(E.budget * 0.2)}) pour ${nb(E.heures / 1e6, 1)} M heures (le volume prévu par le gouvernement, plus 10 % de soins indirects) : ${$(E.tauxHoraire)} l'heure.`,
+        `Fourchette, du scénario conservateur au favorable : capitation de ${$(E.fourchette.capitation[0])} à ${$(E.fourchette.capitation[1])}, visite standard de ${$(E.fourchette.visite[0])} à ${$(E.fourchette.visite[1])}, taux horaire de ${$(E.fourchette.taux[0])} à ${$(E.fourchette.taux[1])}.`,
+        `Contrôles : ${E.recoupements.map(r => `${r.nom} (capitation ${r.capitation}, visite ${r.visite}, taux ${r.taux})`).join(" ; ")}.`,
+      ].forEach(t => etapes.appendChild(el("li", null, t)));
+      calcul.append(el("summary", null, "Comment nous avons calculé notre estimé"), etapes,
+        el("p", "aide", `Notre estimé du ${dateLongue(E.date)}, pas un montant officiel. Sources : Conseil du trésor (proposition du 22 octobre 2025), ministère de la Santé (séance du 5 novembre 2025), entente de principe (décembre 2025), FMOQ (2026).`));
       const res = el("div"); res.id = "loi2-resultat";
       const note = el("p", "aide"); note.id = "loi2-note";
-      carte.append(tete, statut, parts, vise, titreA, annee, anneeAide, titreH, champs, a, res, note);
+      carte.append(tete, statut, parts, vise, titreA, annee, anneeAide, titreH, champs, a, calcul, res, note);
     }
     document.getElementById("loi2-statut").textContent = o
       ? `Montants officiels du ${dateLongue(o.date)} (${o.source}).`
-      : "L'architecture est fixée (document-cadre de la FMOQ et du gouvernement), pas les montants. En attendant, le calcul suit vos hypothèses : inscrivez-les, ou partez de votre revenu actuel. Dès leur publication, l'app prendra les montants officiels.";
+      : "L'architecture est fixée (document-cadre de la FMOQ et du gouvernement), pas les montants. En attendant, le calcul suit vos hypothèses : appliquez notre estimé, partez de votre revenu actuel, ou inscrivez les vôtres. Dès leur publication, l'app prendra les montants officiels.";
     rangees("loi2-parts", [
       { titre: "Capitation", sous: "Par patient associé ou affilié, selon son profil, chaque année", valeur: pct(P.capitation, 0) },
       { titre: "Actes", sous: "Chaque visite, à un tarif unique", valeur: pct(P.actes, 0) },
@@ -2000,11 +2021,12 @@ window.Verrou.quandOuvert(function () {
     document.getElementById("loi2-titre-hyp").hidden = !!o;
     document.getElementById("loi2-champs").hidden = !!o;
     document.getElementById("loi2-calibrer").closest(".actions").hidden = !!o;
+    document.getElementById("loi2-estime-calcul").hidden = !!o;
     const avecSrv = (+S.revenu.demiJourneesSRV || 0) * (+S.revenu.patientsSRV || 0) > 0;
     if (!o) champsRapides("loi2-champs", [
       { p: "loi2.capitation", l: "Capitation par patient associé", u: "$/an", s: 1, h: "Patient non vulnérable." },
       { p: "loi2.suppVulnerable", l: "De plus par patient vulnérable", u: "$/an", s: 1 },
-      { p: "loi2.tarifVisite", l: "Tarif moyen d'une visite", u: "$", s: 0.5 },
+      { p: "loi2.tarifVisite", l: "Tarif moyen, toutes visites", u: "$", s: 0.5, h: "La moyenne de toutes vos visites : la visite standard vaut moins, les visites complexes et à domicile, plus." },
       { p: "loi2.tauxHoraire", l: "Taux horaire", u: "$/h", s: 1 },
       { p: "loi2.heuresIndirectes", l: "Heures de soins indirects par semaine", u: "h/sem.", s: 0.5, h: "Coordination, résultats, documentation, renouvellements, appels aux proches : en dehors de vos demi-journées." },
       { p: "loi2.affilies", l: "Patients affiliés qui vous reviennent", u: "pat.", s: 10, h: "Votre part des inscrits collectifs de votre milieu, payée à un tarif fixe." },
@@ -2012,7 +2034,9 @@ window.Verrou.quandOuvert(function () {
       avecSrv && { p: "loi2.partOrphelins", l: "Sans rendez-vous : patients orphelins", u: "%", s: 5, h: "Leurs visites restent payées à 100 % du tarif actuel. Les autres passent au tarif unique." },
     ].filter(Boolean), d => d.p === "loi2.partOrphelins" && (S.loi2 || {}).partOrphelins == null ? 100 : lire(d.p));
     const h = hypothesesLoi2(), x = C.revenuCompose(R.rev, h, optionsLoi2(R)), z = document.getElementById("loi2-resultat"); z.textContent = "";
-    const marque = h.officiel ? "officiel" : "hypothèse", actuel = R.rev[R.mode].total;
+    // Les cinq montants de notre estimé, tels quels : marqués « notre estimé » ; dès qu'un change, « hypothèse ».
+    const E = C.COMPOSE.estime, estime = ["capitation", "suppVulnerable", "capitationAffilie", "tarifVisite", "tauxHoraire"].every(k => +h[k] === E[k] && h[k] !== null && h[k] !== "");
+    const marque = h.officiel ? "officiel" : estime ? "notre estimé" : "hypothèse", actuel = R.rev[R.mode].total;
     if (x.premiereLigne <= 0) z.appendChild(el("p", "aide", "Inscrivez vos hypothèses, ou partez de votre revenu actuel, pour voir votre revenu au mode composé."));
     else {
       const garantie = C.garantieCompose(x.total, actuel), majT = x.maj > 1.0001 ? ` · majoré de ${nb((x.maj - 1) * 100, 1)} % (territoire)` : "";

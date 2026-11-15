@@ -543,6 +543,21 @@
     source: "FMOQ, Modèle de rémunération composé en première ligne : résumé-synthèse (octobre 2026) et capsule explicative (2026) ; entente de principe du 10 décembre 2025",
     // { capitation, suppVulnerable, capitationAffilie, tarifVisite, tauxHoraire, date: "AAAA-MM-JJ", source }
     officiel: null,
+    /* Notre estimé (Morand, révisé le 15 novembre 2026), PAS un montant officiel : scénario central de l'enveloppe du mode
+       composé divisée par les volumes du Québec. Budget : 1,29 G$ (première ligne visée, sans la coupe de 13,04 % :
+       1,12 G$ + 0,17 G$, Conseil du trésor, 22 octobre 2025) × 1,17 (hausses de 14,5 % et 2,5 %, additives) = 1,51 G$.
+       Capitation (50 %, moins 3 % réservés à la majoration des nouveaux médecins et aux suppléments) ÷ 6,07 M associés
+       (40 % vulnérables, pondérés × 2) et 1,28 M affiliés (× 0,67) ; actes (30 %) ÷ 16,7 M interactions ; horaire (20 %)
+       ÷ 10,7 M heures (volume du gouvernement + 10 % de soins indirects). Fourchette : scénarios conservateur et favorable.
+       Détail : document « Loi 2 : estimation des montants du mode composé ». */
+    estime: {
+      capitation: 78, suppVulnerable: 78, capitationAffilie: 52, tarifVisite: 27, tauxHoraire: 28, date: "2026-11-15",
+      budget: 1.509e9, budgetBase: 1.29e9, hausse: 0.17, reserve: 0.03, associes: 6.07e6, affilies: 1.28e6, partVulnerables: 0.4,
+      visites: 16.7e6, heures: 10.7e6, visiteStandard: 22, visiteComplexe: 49, visiteDomicile: 84,
+      fourchette: { capitation: [67, 93], visite: [19, 25], taux: [22, 34] },
+      recoupements: [{ nom: "le revenu actuel du médecin type de la FMOQ, augmenté de 17 %", capitation: "78 $", visite: "21 $ en moyenne", taux: "25 $ à 32 $" },
+        { nom: "le barème du gouvernement d'octobre 2025, sans la coupe et avec la hausse", capitation: "non comparable", visite: "22 $", taux: "36 $" }],
+    },
   };
   const n0 = v => Math.max(0, Number.isFinite(+v) ? +v : 0);
   // Année de prise en charge au passage au mode composé : 1, 2, ou 3 (plus tard, sans majoration).

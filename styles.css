@@ -1278,3 +1278,7 @@ h1 .beta { margin-left: 12px; padding: 4px 9px 3px; font-size: 11px; vertical-al
   .nav a[data-onglet="loi2"] { position: relative; }
   .nav a .beta { position: absolute; top: 3px; left: calc(50% + 12px); margin: 0; padding: 1px 4px 0; border-radius: 4px; font-size: 7.5px; letter-spacing: 0.1em; }
 }
+
+/* Loi 2 : comment nous avons calculé notre estimé (liste numérotée dans le repli). */
+.loi2-etapes { margin: 4px 0 10px; padding-left: 1.3em; font-size: 0.9rem; line-height: 1.5; color: var(--discret); }
+.loi2-etapes li + li { margin-top: 6px; }
