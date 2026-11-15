@@ -15,7 +15,8 @@
 
 :root {
   --fond: #f5f4f0;
-  --marque: #b48a4a;
+  --marque: #d9be7c;   /* champagne : traits, onglets, jauges */
+  --logo: #b48a4a;     /* le doré des logos ne change pas */
   --surface: #ffffff;
   --surface-2: #efeee9;
   --surface-3: #e6e4dd;
@@ -51,7 +52,8 @@
 @media screen and (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --fond: #0e0e0d;
-    --marque: #d6b57a;
+    --marque: #d9be7c;
+    --logo: #d6b57a;
     --surface: #1a1a19;
     --surface-2: #242422;
     --surface-3: #2e2e2b;
@@ -81,7 +83,8 @@
 @media screen {
   :root[data-theme="dark"] {
     --fond: #0e0e0d;
-    --marque: #d6b57a;
+    --marque: #d9be7c;
+    --logo: #d6b57a;
     --surface: #1a1a19;
     --surface-2: #242422;
     --surface-3: #2e2e2b;
@@ -134,7 +137,7 @@ td, .chiffre, .hero-valeur, .tuile-valeur, .rangee-valeur { font-variant-numeric
 /* ---------- Marque, barre du haut ---------- */
 /* Le logo vit dans un sprite (en haut de index.html) : symboles teints par la couleur du texte. */
 .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
-.marque { display: inline-flex; align-items: center; gap: 11px; min-width: 0; color: var(--marque); text-decoration: none; border-radius: 12px; }
+.marque { display: inline-flex; align-items: center; gap: 11px; min-width: 0; color: var(--logo); text-decoration: none; border-radius: 12px; }
 /* Téléphone : le lion et le nom prennent toute la largeur et grandissent avec l'écran (jusqu'à 440 px de
    large) ; le nom remplit la place à droite du lion (rapport 1200 / 78, étoile comprise). */
 .marque-ico { height: clamp(38px, 12vw, 54px); width: auto; aspect-ratio: 263 / 202; flex: none; }
@@ -147,7 +150,7 @@ td, .chiffre, .hero-valeur, .tuile-valeur, .rangee-valeur { font-variant-numeric
 .verrouille .barre-haut, .verrouille .barre-outils, .verrouille .app, .verrouille .saut { display: none; }
 .verrouille .verrou { display: grid; place-items: center; min-height: 100vh; min-height: 100dvh; padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); }
 .verrou-boite { width: min(100%, 360px); display: flex; flex-direction: column; gap: 14px; text-align: center; }
-.verrou-sceau { width: 112px; height: 112px; color: var(--marque); align-self: center; }
+.verrou-sceau { width: 112px; height: 112px; color: var(--logo); align-self: center; }
 .verrou h1 { font: 500 1.7rem/1.15 var(--police-titre); }
 .verrou .message { color: var(--danger); }
 .verrou .plier { text-align: left; }
@@ -671,7 +674,7 @@ a.tuile:hover { border-color: var(--trait); }
   .nav-marque { display: flex !important; justify-content: center; padding: 2px 0 26px; }
   .nav-sceau { width: 150px; height: 150px; }
   /* Le sceau est un lien vers l'accueil : sans le style des onglets. */
-  .nav a.nav-marque { flex: none; align-self: center; padding: 2px 0 26px; color: var(--marque); background: none; box-shadow: none; }
+  .nav a.nav-marque { flex: none; align-self: center; padding: 2px 0 26px; color: var(--logo); background: none; box-shadow: none; }
   .nav a.nav-marque svg { width: 150px; height: 150px; fill: initial; stroke: initial; stroke-width: initial; }
   .nav a.nav-marque:hover { background: none; opacity: 0.85; }
   .nav a { flex: none; flex-direction: row; gap: 12px; padding: 11px 12px; font-size: 0.95rem; color: var(--encre-2); }
@@ -773,7 +776,7 @@ a.tuile:hover { border-color: var(--trait); }
 }
 .assistant[open] { display: flex; }
 .assistant::backdrop { background: rgba(10, 10, 9, 0.42); }
-.as-tete { display: flex; align-items: center; gap: 12px; flex: none; padding: max(12px, env(safe-area-inset-top)) 18px 8px; color: var(--marque); }
+.as-tete { display: flex; align-items: center; gap: 12px; flex: none; padding: max(12px, env(safe-area-inset-top)) 18px 8px; color: var(--logo); }
 .as-sceau { width: 42px; height: 42px; flex: none; }
 .as-points { display: flex; gap: 6px; list-style: none; margin: 0 auto; padding: 0; }
 .as-points li { width: 20px; height: 4px; border-radius: 999px; background: var(--surface-3); }
@@ -1114,15 +1117,15 @@ a.tuile:hover { border-color: var(--trait); }
    meilleur, un peu plus d'air. À l'écran seulement : le rapport PDF garde sa mise en page.
    ============================================================ */
 :root {
-  --or-texte: #8b6921;   /* or des chiffres et des liens : 4,5:1 au moins sur le fond de page et les cartes */
-  /* Or métallique (barres, pastilles) : un reflet clair au milieu ; la piste, champagne. */
-  --or-metal: linear-gradient(90deg, #b08a3e 0%, #d9bb72 48%, #c39a48 72%, #a98436 100%);
-  --or-piste: #f3ead4;
+  --or-texte: #8a6b2a;   /* champagne foncé, pour le texte : 4,5:1 au moins sur le fond de page et les cartes */
+  /* Or champagne (barres, pastilles) : un reflet clair au milieu ; la piste, champagne pâle. */
+  --or-metal: linear-gradient(90deg, #cfb06a 0%, #efdfb0 48%, #dcc185 72%, #c9a961 100%);
+  --or-piste: #f6edd5;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --or-texte: #d6b57a; --or-metal: linear-gradient(90deg, #b8934a 0%, #ecd391 48%, #d2ad62 72%, #b28d45 100%); --or-piste: color-mix(in srgb, #d6b57a 24%, #1a1a19); } }
+  --or-texte: #e3cc94; --or-metal: linear-gradient(90deg, #cfb06a 0%, #efdfb0 48%, #dcc185 72%, #c9a961 100%); --or-piste: color-mix(in srgb, #d9be7c 24%, #1a1a19); } }
 :root[data-theme="dark"] {
-  --or-texte: #d6b57a; --or-metal: linear-gradient(90deg, #b8934a 0%, #ecd391 48%, #d2ad62 72%, #b28d45 100%); --or-piste: color-mix(in srgb, #d6b57a 24%, #1a1a19); }
+  --or-texte: #e3cc94; --or-metal: linear-gradient(90deg, #cfb06a 0%, #efdfb0 48%, #dcc185 72%, #c9a961 100%); --or-piste: color-mix(in srgb, #d9be7c 24%, #1a1a19); }
 @media screen {
   .hero-valeur { font-family: var(--police-titre); font-weight: 500; letter-spacing: -0.015em; font-variant-numeric: lining-nums tabular-nums; }
   .carte-tete h2, .carte-repliable > summary h2 { font-family: var(--police-titre); font-weight: 600; font-size: 1.16rem; letter-spacing: -0.005em; }
