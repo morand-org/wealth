@@ -45,9 +45,9 @@ Lisez ce fichier en entier avant de commencer. Il passe avant vos habitudes.
    - Comptes : Supabase, un seul compte (celui de la personne), données
      chiffrées sur l'appareil, conception décrite dans `README.md`. Le lien de
      transfert avec code reste offert.
-   - Chaque page : un résumé, puis « Voir tout le détail ». Barre du bas : Revenu,
+   - Chaque page : un résumé, puis « Voir tout le détail ». Barre du bas : Aperçu, Revenu,
      Comparer, Loi 2, Finances (« Budget · Patrimoine · Impôt ») ; les codes (répertoire des actes, codes de
-     vulnérabilité, CNESST) sont dans Codes Morand (`/codes/`, dépôt du site), que le bandeau du haut ouvre ; l'Aperçu s'ouvre par le logo. Tout en haut, le bandeau
+     vulnérabilité, CNESST) sont dans Codes Morand (`/codes/`, dépôt du site), que le bandeau du haut ouvre ; l'Aperçu s'ouvre aussi par le logo. Tout en haut, le bandeau
      « MORAND · MÉDECINE FAMILIALE » mène à l'accueil de morand.org.
    - Identité visuelle : polices Inter et Newsreader hébergées dans
      `polices/`, couleurs de `styles.css`. Pas de « pas à pas ».

@@ -1851,18 +1851,18 @@ async function repertoireActes(b, base) {
   await ctx.close();
 }
 
-/* 42. La barre du bas : Revenu, Comparer, Codes, Loi 2, Finances ; l'Aperçu par le logo. L'impôt est rangé dans Finances
+/* 42. La barre du bas : Aperçu, Revenu, Comparer, Loi 2, Finances ; l'Aperçu aussi par le logo. L'impôt est rangé dans Finances
    (« Budget · Patrimoine · Impôt ») : Finances reste marqué dans la barre ; le Budget et l'Aperçu y mènent aussi. Rien ne
    déborde à 320 px. */
 async function revenuEtImpot(b, base) {
   const { ctx, p, erreurs } = await ouvrir(b, base, { page: "revenu" });
   const etat = () => p.evaluate(() => ({ hash: location.hash, nav: [...document.querySelectorAll(".nav > a[data-onglet]")].map(a => a.dataset.onglet),
-    noms: [...document.querySelectorAll(".nav > a[data-onglet]")].slice(0, 4).map(a => a.textContent.trim()),
+    noms: [...document.querySelectorAll(".nav > a[data-onglet]")].slice(0, 5).map(a => a.textContent.trim()),
     marque: (document.querySelector('.nav [aria-current="page"]') || {}).dataset?.onglet,
     section: [...document.querySelectorAll(".vue:not([hidden]) .onglets-section a")].map(a => `${a.textContent}${a.getAttribute("aria-current") === "page" ? "*" : ""}`) }));
   const rv = await etat();
-  verifier("barre du bas : Revenu, Comparer, Loi 2, Finances", rv.nav.join() === "revenu,comparer,loi2,budget,donnees"
-    && rv.noms.join() === "Revenu,Comparer,Loi 2,Finances", rv);
+  verifier("barre du bas : Aperçu, Revenu, Comparer, Loi 2, Finances", rv.nav.join() === "apercu,revenu,comparer,loi2,budget,donnees"
+    && rv.noms.join() === "Aperçu,Revenu,Comparer,Loi 2,Finances", rv);
   verifier("revenu : plus d'onglet Impôt en haut ; Revenu marqué", rv.section.length === 0 && rv.marque === "revenu", rv);
   const roues = await p.evaluate(() => [...document.querySelectorAll(".tete-page .bouton-modifier[data-feuille]")].map(b => ({ roue: b.classList.contains("bouton-reglages"),
     nom: b.getAttribute("aria-label") || "", texte: b.textContent.trim(), taille: Math.round(b.getBoundingClientRect().width) || null })));
@@ -1883,6 +1883,8 @@ async function revenuEtImpot(b, base) {
   verifier("aperçu : la tuile de l'impôt reste", await p.evaluate(() => !!document.querySelector('#ap-tuiles a.tuile[href="#impot"]')));
   await allerA(p, "comparer");
   verifier("comparer : marqué dans la barre du bas", (await etat()).marque === "comparer");
+  await allerA(p, "apercu");
+  verifier("aperçu : marqué dans la barre du bas", (await etat()).marque === "apercu");
   await p.setViewportSize({ width: 320, height: 700 });
   const debords = [];
   for (const pg of ["revenu", "revenu/detail", "impot", "comparer", "comparer/modes", "comparer/demijournee", "comparer/actes", "comparer/offres", "loi2/estimateur", "loi2/regles", "loi2/documents", "budget", "avenir"]) {
