@@ -1,4 +1,4 @@
-/* WealthMorand — l'app : état, calculs du ménage, écrans et événements. L'état vit dans le
+/* Wealth Morand — l'app : état, calculs du ménage, écrans et événements. L'état vit dans le
    localStorage de ce navigateur, chiffré si le verrou est activé (verrou.js) ; aucune donnée ne
    quitte l'appareil. Calculs fiscaux et de la RAMQ : calc.js ; valeurs de départ et catalogues :
    catalogues.js ; formats, composants et graphique : interface.js. */
@@ -8,7 +8,7 @@ window.Verrou.quandOuvert(function () {
   const CLE = "boussole.v1";
   // Valeurs de départ, catalogues et champs (catalogues.js) ; formats, composants et graphique (interface.js).
   const { EXEMPLE, nouvelId, CATALOGUE, ITEMS_REVENUS, normaliserLignes, annuelLigne, estPro, nomLigne, ITEMS_PRO, normaliserPro, AIDE_CATEGORIE,
-    normaliserBudget, nomDepense, categorie, VERIFICATION, MILIEUX, ACTIVITES, nomActivite, LEXIQUE, CODES_VULNERABILITE } = window.WM.catalogues;
+    normaliserBudget, nomDepense, categorie, VERIFICATION, MILIEUX, ACTIVITES, nomActivite, LEXIQUE } = window.WM.catalogues;
   const { SERIES, $, $2, nb, pct, signe, texteDe, moisAn, el, icone, hero, puce, rangees, segment, tableauSimple, lignes, moins, signePct,
     graphiqueLignes, lexique, esc } = window.WM.interface;
 
@@ -1585,7 +1585,7 @@ window.Verrou.quandOuvert(function () {
       + `Intervention de supervision : ${$2(M.acteSupervision * maj)} l'heure payée à ${nb(M.pctSupervision, 2)} %, au plus ${nb(M.supervisionMaxH, 1)} h (5 h l'après-midi), un seul acte quel que soit le nombre d'apprenants ; `
       + `les visites faites pendant le bloc ne se facturent alors pas, mais le forfait de responsabilité (${$2(M.forfaitResponsabilite * maj)}) de chaque patient vulnérable inscrit examiné, oui, à 100 % (annexe II à l'annexe XXIII). `
       + `Les suppléments à l'examen périodique d'un enfant de 0 à 5 ans (${$2(M.suppExamenEnfant * maj)}), au suivi de grossesse (${$2(M.suppSuiviGrossesse * maj)}) et à la première visite de grossesse au 1er trimestre (${$2(M.suppGrossessePremierTrimestre * maj)}) aussi, `
-      + "selon les visites indiquées ; la prise en charge temporaire d'une cliente enceinte (15189, 8,95 $ ; 19074 en GMF, 9,35 $) aussi, mais elle dépend de vos patientes : elle est au répertoire, pas dans ce calcul. "
+      + "selon les visites indiquées ; la prise en charge temporaire d'une cliente enceinte (15189, 8,95 $ ; 19074 en GMF, 9,35 $) aussi, mais elle dépend de vos patientes : elle est au répertoire des actes (Codes Morand), pas dans ce calcul. "
       + `Visites : ${nb(M.pctMixte, 2)} % du tarif, les vôtres et celles des apprenants ; prise en charge ${$2(x.tarifPec)} et suivi ${$2(x.tarifSuivi)}, selon la part de patients vulnérables (le forfait de responsabilité est compris dans le tarif des visites de patients vulnérables). Montants avant les frais et l'impôt.`;
     if (U.sdjFocus) { const f = document.getElementById(U.sdjFocus); U.sdjFocus = null; if (f && !f.disabled) f.focus(); }
   }
@@ -1595,81 +1595,6 @@ window.Verrou.quandOuvert(function () {
   // Part des visites du plan faites à des patients vulnérables (suivis et périodiques de patients vulnérables), en %.
   const pctVulnPlan = () => { const m = S.revenu.mix || {}, cles = ["suivi", "suiviV", "perioV", "pedia", "gross"], t = cles.reduce((a, k) => a + Math.max(0, +m[k] || 0), 0);
     return t > 0 ? (Math.max(0, +m.suiviV || 0) + Math.max(0, +m.perioV || 0)) / t * 100 : 0; };
-  /* Répertoire des actes (js/repertoire.js) : recherche par code ou par mot, sans accents ni majuscules ; filtres par
-     groupe. Construit une fois ; la saisie ne refait que la liste (le focus reste dans le champ). */
-  const sansAccents = t => String(t).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-  const REP = { q: "", groupe: "frequents", actes: null };
-  function actesRepertoire() {
-    if (REP.actes) return REP.actes;
-    const Rp = window.Repertoire, noms = Object.fromEntries(Rp.GROUPES);
-    /* Les formulaires de la CNESST viennent du moteur (un seul endroit pour leurs tarifs) ; à la fin de leur groupe :
-       ils sont 42, et le forfait GMF et les suppléments, facturés plus souvent, passent avant. */
-    const cnesst = C.CNESST.map(x => ({ g: "formulaires", n: `CNESST : ${x.nom.charAt(0).toLowerCase()}${x.nom.slice(1)}`, c: [x.code], t: x.tarif, p: Rp.PLEIN, k: "cnesst travail accident ivac formulaire" }));
-    const i = Rp.ACTES.findIndex(a => a.g === "non");
-    const liste = [...Rp.ACTES.slice(0, i), ...cnesst, ...Rp.ACTES.slice(i)];
-    REP.actes = liste.map((a, rang) => ({ ...a, rang, texte: sansAccents([a.n, a.c.join(" "), a.k || "", noms[a.g], a.note || ""].join(" ")) }));
-    return REP.actes;
-  }
-  const deux = (t, f) => Array.isArray(t) ? `${f(t[0])} / ${f(t[1])}` : f(t);
-  const montantRep = (t, pct) => t == null ? "—" : deux(t, v => $2(v * pct / 100).replace(/\s\$$/, "")) + " $";
-  function ligneRepertoire(a) {
-    const paliers = Array.isArray(a.t) ? (a.d ? a.d.join(" / ") : "moins de 500 / 500 inscrits et plus") : "";
-    const sous = [a.c.length ? a.c.join(", ") : "", paliers, a.note || ""].filter(Boolean).join(" · ");
-    if (!a.p) return { titre: a.n, sous, valeur: "Compris", valeurSous: a.c.length ? "hors GMF-U" : "dans la visite", cls: "rep-non" };
-    return { titre: a.n, sous, valeur: montantRep(a.t, 100), valeurSous: a.t == null ? "à confirmer" : a.p === 100 ? "payé à 100 %" : `au mixte ${montantRep(a.t, a.p)}` };
-  }
-  // « Les plus fréquents » au départ ; une recherche porte sur tous les actes (ou sur le groupe choisi).
-  function filtrerRepertoire() {
-    const mots = sansAccents(REP.q).split(/\s+/).filter(Boolean), frequents = REP.groupe === "frequents" && !mots.length;
-    const dans = a => frequents ? window.Repertoire.FREQUENTS.includes(a.c[0]) : REP.groupe === "tous" || REP.groupe === "frequents" || a.g === REP.groupe;
-    return actesRepertoire().filter(a => dans(a) && mots.every(m => a.texte.includes(m)));
-  }
-  function choisirGroupeRepertoire(v) {
-    REP.groupe = v;
-    document.querySelectorAll("#rep-groupes button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === v ? "true" : "false"));
-    listeRepertoire();
-  }
-  function listeRepertoire() {
-    const z = document.getElementById("rep-liste"), noms = Object.fromEntries(window.Repertoire.GROUPES);
-    let trouves = filtrerRepertoire(), ailleurs = false;
-    // Rien dans le groupe choisi : la recherche porte sur tous les actes, et on le dit.
-    if (!trouves.length && REP.q.trim() && !["tous", "frequents"].includes(REP.groupe)) {
-      const g = REP.groupe; REP.groupe = "tous"; trouves = filtrerRepertoire(); REP.groupe = g; ailleurs = trouves.length > 0;
-    }
-    z.textContent = "";
-    document.getElementById("rep-compte").textContent = `${nb(trouves.length, 0)} acte${trouves.length > 1 ? "s" : ""}`;
-    if (!trouves.length) { z.appendChild(el("p", "aide", "Aucun acte ne correspond. Essayez un code (15804) ou un mot (suivi, stérilet, cryochirurgie).")); return; }
-    if (ailleurs) { const n = el("p", "aide", `Rien dans « ${noms[REP.groupe]} » : voici les résultats des autres groupes.`); n.id = "rep-ailleurs"; z.appendChild(n); }
-    // Les plus fréquents : une seule liste, puis « Voir les N actes ». Sans recherche : par groupe, dans l'ordre de
-    // fréquence ; avec une recherche : les résultats, avec leur groupe.
-    const recherche = !!REP.q.trim(), frequents = REP.groupe === "frequents" && !recherche;
-    if (frequents) {
-      z.appendChild(rangees(el("div"), trouves.map(a => { const l = ligneRepertoire(a); return { ...l, sous: noms[a.g] + " · " + l.sous }; })));
-      const tous = el("button", "bouton secondaire rep-tous", `Voir les ${nb(actesRepertoire().length, 0)} actes`); tous.type = "button"; tous.id = "rep-voir-tous";
-      tous.addEventListener("click", () => { choisirGroupeRepertoire("tous"); document.querySelector('#rep-groupes button[data-v="tous"]').focus(); });
-      const a = el("div", "actions"); a.appendChild(tous); z.appendChild(a);
-      return;
-    }
-    for (const [g] of window.Repertoire.GROUPES) {
-      const items = trouves.filter(a => a.g === g);
-      if (!items.length) continue;
-      if (!recherche && REP.groupe === "tous") z.appendChild(el("h3", "rep-titre", noms[g]));
-      z.appendChild(rangees(el("div"), items.map(a => { const l = ligneRepertoire(a); return { ...l, sous: (recherche ? noms[a.g] + " · " : "") + l.sous }; })));
-    }
-  }
-  function initRepertoire() {
-    const q = document.getElementById("rep-q"), groupes = document.getElementById("rep-groupes");
-    [["frequents", "Les plus fréquents"], ["tous", "Tous"], ...window.Repertoire.GROUPES].forEach(([v, t]) => {
-      const b = el("button", "rep-groupe", t); b.type = "button"; b.dataset.v = v; b.setAttribute("aria-pressed", v === REP.groupe ? "true" : "false");
-      b.addEventListener("click", () => choisirGroupeRepertoire(v));
-      groupes.appendChild(b);
-    });
-    q.addEventListener("input", () => { REP.q = q.value; listeRepertoire(); });
-    document.getElementById("rep-source").textContent = `Tarifs : ${window.Repertoire.source}, colonne « En CLSC ou en GMF-U en établissement », avant la majoration selon le territoire. `
-      + "Au mixte en GMF-U : 63,58 % des services médicaux, 62,15 % des services sur base de temps, 100 % des suppléments et des formulaires, en plus du forfait horaire. "
-      + "Les actes chirurgicaux sont publiés en dollars entiers. Ordre : du plus fréquent au plus rare ; la recherche porte sur tous les actes.";
-    listeRepertoire();
-  }
   const NOMS_MODE_ACTES = { horaire: "Le taux horaire", mixte: "Le mixte", acte: "L'acte" };
   function rendreActes(R) {
     const r = S.revenu, o = optionsActes(R), D = { ...C.RAMQ, ...o.montants }, maj = 1 + (+r.majorationPct || 0) / 100;
@@ -1754,33 +1679,6 @@ window.Verrou.quandOuvert(function () {
     document.getElementById("rv-actes-resume").textContent = `Un suivi : ${$2(suivi.acte)} à l'acte, ${$2(suivi.mixte)} au mixte`;
     // Supervision : son onglet, pour toute pratique (hors GMF-U, pour préparer une demi-journée d'enseignement).
     document.getElementById("rv-carte-supervision").hidden = false;
-  }
-  // Codes de vulnérabilité (page Codes) : les 20 catégories, filtrées par code ou par mot.
-  function rendreVulnerabilite() {
-    const q = document.getElementById("vu-q"), table = document.getElementById("rv-vuln");
-    if (!q.dataset.branche) { q.dataset.branche = "1"; q.addEventListener("input", rendreVulnerabilite); }
-    const mots = sansAccents(q.value.trim()).split(/\s+/).filter(Boolean);
-    // Chaque mot cherché doit commencer un mot du libellé ou des mots de recherche ; deux lettres ou moins, être un mot entier :
-    // « FA » trouve la fibrillation auriculaire, pas « façon ».
-    const liste = CODES_VULNERABILITE.filter(v => { const t = sansAccents(`${v.code} ${v.libelle} ${v.m}`).split(/[^a-z0-9]+/); return mots.every(m => t.some(w => m.length <= 2 ? w === m : w.startsWith(m))); });
-    lignes(table, ["Code", "Catégorie de problèmes de santé"], liste.map(v => ({ cls: v.ferme ? "vu-ferme" : null, classes: ["vu-code", null],
-      cellules: [v.code, v.note ? `${v.libelle}. ${v.note}` : v.libelle] })));
-    document.getElementById("vu-vide").hidden = liste.length > 0;
-    const actifs = CODES_VULNERABILITE.filter(v => !v.ferme).length;
-    document.getElementById("rv-vuln-resume").textContent = `${nb(actifs, 0)} catégories, de 01 à 20`;
-    const M = C.MONTANTS_LIEU;
-    document.getElementById("rv-vuln-note").textContent = "Un patient inscrit est vulnérable s'il a au moins une de ces catégories ; il peut en avoir plusieurs. "
-      + `Forfait annuel (EP 40, par. 6.01) : ${$2(M.cabinet.forfaitVulnerable)} en cabinet, ${$2(M.etablissement.forfaitVulnerable)} en établissement pour une catégorie ; 150 % pour deux ; 200 % pour trois ou plus. `
-      + "Ajouter, modifier ou annuler un code se fait lors d'une visite ; l'inscription peut être modifiée dans les 90 jours suivant la visite (infolettre 171). "
-      + "Libellés : Guide de gestion « Révision des codes de vulnérabilité » de la FMOQ (2017), d'après l'infolettre 171 de la RAMQ du 15 septembre 2017. "
-      + "Modifications faites depuis à l'EP 40 : source manquante, non vérifiées ici. Vérifiez le libellé en vigueur avant d'inscrire un code.";
-  }
-  // Formulaires de la CNESST (page Codes, avec le répertoire des actes).
-  function rendreCnesst() {
-    lignes(document.getElementById("rv-cnesst"), ["Formulaire", "Tarif"], C.CNESST.map(f => ({ cellules: [`${f.nom} · ${f.code}`, $2(f.tarif)] })));
-    document.getElementById("rv-cnesst-note").textContent = "Annexe XIII de l'Entente, en vigueur depuis le 1er avril 2025 (manuel de la RAMQ consulté le 25 octobre 2026). "
-      + "Payés à 100 % du tarif dans tous les modes : à l'acte, au mixte (annexe XXIII, par. 2.11) et au taux horaire, à l'acte pour ces services sans facturer d'heures pour ce temps. "
-    document.getElementById("rv-cnesst-resume").textContent = `${nb(C.CNESST.length, 0)} formulaires, payés à 100 % dans tous les modes`;
   }
   // Quand un mode de rémunération devient plus payant qu'un autre, selon les tarifs de la personne.
   function rendreSeuils(R) {
@@ -1942,7 +1840,6 @@ window.Verrou.quandOuvert(function () {
     if (!S.revenu.demiJourneeType) S.revenu.demiJourneeType = demiJourneeDuPlan();
     S.revenu.demiJourneeType[inp.dataset.dj] = v; S.meta.exemple = false; plusTard();
   });
-  initRepertoire();
   document.getElementById("sab-plan").addEventListener("click", () => { S.revenu.supervisionDJ = null; sauver(); tout(); toast("La demi-journée repart de votre plan."); });
   document.getElementById("rv-dj-plan").addEventListener("click", () => { S.revenu.demiJourneeType = null; sauver(); tout(); document.getElementById("rv-dj-intro").focus?.(); });
 
@@ -2710,7 +2607,7 @@ window.Verrou.quandOuvert(function () {
       : "Conjoints au sens de l'impôt : aucun crédit à transférer, chacun utilise ses propres crédits."));
   }
 
-  // Refait les cas de l'outil officiel avec le calcul de WealthMorand et montre les écarts.
+  // Refait les cas de l'outil officiel avec le calcul de Wealth Morand et montre les écarts.
   const CHAMPS_VERIF = [["qc", "Impôt du Québec"], ["fed", "Impôt fédéral"], ["rrq", "RRQ"], ["rqap", "RQAP"], ["ae", "Assurance-emploi"],
     ["af", "Allocation famille"], ["fournitures", "Fournitures scolaires"], ["ace", "Allocation canadienne pour enfants"], ["prime", "Prime d'assurance médicaments"]];
   // L'outil de mai 2026 plafonnait la prime à 766 $. La RAMQ publie 789 $ dès le 1er juillet 2026 : 777,50 $ pour l'année 2026.
@@ -2745,7 +2642,7 @@ window.Verrou.quandOuvert(function () {
     document.getElementById("im-verif-resume").textContent = `${nb(egaux, 0)} montants sur ${nb(total, 0)} identiques à l'outil du ministère des Finances`;
     const tete = el("div", "hero-sous");
     tete.append(puce(`${nb(egaux, 0)} sur ${nb(total, 0)} identiques`, "haut", true));
-    z.append(tete, el("p", "resume", `WealthMorand refait ${VERIFICATION.length} cas de l'outil officiel du ministère des Finances du Québec : ${nb(egaux, 0)} montants sur ${nb(total, 0)} sont identiques, à 1 $ près.` +
+    z.append(tete, el("p", "resume", `Wealth Morand refait ${VERIFICATION.length} cas de l'outil officiel du ministère des Finances du Québec : ${nb(egaux, 0)} montants sur ${nb(total, 0)} sont identiques, à 1 $ près.` +
       (pire.e ? ` Le plus grand écart est de ${$(Math.abs(pire.e))} (${pire.n.toLowerCase()}, ${pire.cas.charAt(0).toLowerCase() + pire.cas.slice(1)}).` : "")));
     z.appendChild(rangees(el("div"), cas.map(({ v, ecarts }) => {
       const max = ecarts.reduce((m, x) => Math.abs(x.e) > Math.abs(m) ? x.e : m, 0);
@@ -2754,7 +2651,7 @@ window.Verrou.quandOuvert(function () {
     const d = el("details", "plier"); d.appendChild(el("summary", null, "Voir chaque montant"));
     cas.forEach(({ v, ecarts }) => {
       d.appendChild(el("h4", null, nomCas(v)));
-      tableauSimple(d, ["", "Officiel", "WealthMorand", "Écart"], ecarts.map(x => ({ cellules: [x.n, $(x.off), $(x.nous), x.plafond ? "plafond" : x.e ? signe(x.e) : "—"] })));
+      tableauSimple(d, ["", "Officiel", "Wealth Morand", "Écart"], ecarts.map(x => ({ cellules: [x.n, $(x.off), $(x.nous), x.plafond ? "plafond" : x.e ? signe(x.e) : "—"] })));
     });
     z.appendChild(d);
     z.appendChild(el("p", "aide", "Outil de calcul du revenu disponible des familles (version de mai 2026, année 2026), consulté le 25 octobre 2026. L'outil ne traite que des revenus d'emploi : il valide les barèmes, les crédits, les transferts entre conjoints, les allocations et la prime d'assurance médicaments. Votre revenu de travailleur autonome (RRQ des deux parts, Fonds des services de santé) suit les mêmes barèmes, mais ne peut pas y être vérifié. La prime de ces cas est plafonnée à 766 $ dans l'outil de mai ; la RAMQ publie 789 $ par adulte dès le 1er juillet 2026, soit 777,50 $ pour l'année 2026 : ces lignes indiquent « plafond »."));
@@ -3172,7 +3069,7 @@ window.Verrou.quandOuvert(function () {
     // Seule la page affichée se redessine (lot 10 de l'audit) : ouvrir une page appelle tout() de nouveau.
     const visible = (document.querySelector(".vue:not([hidden])") || {}).id || "v-apercu";
     ({ "v-apercu": () => rendreApercu(R), "v-revenu": () => rendreRevenu(R), "v-comparer": () => rendreComparer(R), "v-impot": () => rendreImpot(R), "v-budget": () => rendreBudget(R),
-      "v-codes": () => { rendreVulnerabilite(); rendreCnesst(); }, "v-loi2": () => rendrePageLoi2(R),
+      "v-loi2": () => rendrePageLoi2(R),
       "v-avenir": () => rendreAvenir(R), "v-donnees": () => rendreFiabilite() })[visible]?.();
     if (feuilleCourante && feuilleCourante.maj) feuilleCourante.maj();
     // Sigles de la RAMQ : définition au toucher, dans les pages et le panneau ouvert.
@@ -3379,7 +3276,7 @@ window.Verrou.quandOuvert(function () {
     const t = v => { const x = String(v ?? ""); return `"${(/^[=+\-@\t\r]/.test(x) && !/^-?\d/.test(x) ? "'" + x : x).replace(/"/g, '""')}"`; };   // pas de formule dans un tableur
     const L = [];
     const ligne = (...c) => L.push(c.join(";"));
-    ligne(t("WealthMorand"), t(`Exporté le ${new Date().toLocaleDateString("fr-CA")}`)); L.push("");
+    ligne(t("Wealth Morand"), t(`Exporté le ${new Date().toLocaleDateString("fr-CA")}`)); L.push("");
     ligne(t("Résumé"), t("Montant"));
     [["Revenu brut de l'année", Rr.brut], [`${Rr.libelleNet(Rr.mode)} (année)`, Rr.nets[Rr.mode]], ["Impôt et cotisations (année)", Rr.impot.total], ["Revenu net par mois", Rr.netMoi],
      ["Dépenses par mois (votre part)", Rr.depMoi], ["Paiements de dettes par mois", Rr.dettesMoi], ["Épargne par mois", Rr.epargneMoi], ["Surplus par mois", Rr.surplusMoi],
@@ -4342,12 +4239,13 @@ window.Verrou.quandOuvert(function () {
     annulerToast = null; boiteToast.hidden = true;
   });
 
-  /* Pages, avec la page ouverte dans l'adresse (#revenu, #impot…). La barre : Revenu, Comparer, Codes, Loi 2, Finances ;
+  /* Pages, avec la page ouverte dans l'adresse (#revenu, #impot…). La barre : Revenu, Comparer, Loi 2, Finances ;
      l'Aperçu s'ouvre par le logo. Finances regroupe le budget, le patrimoine et l'impôt (« Budget · Patrimoine · Impôt »).
-     Le répertoire des actes et les formulaires de la CNESST sont dans Codes ; le mode composé, dans Loi 2. */
+     Le répertoire des actes, les codes de vulnérabilité et les formulaires de la CNESST sont dans Codes Morand (/codes/) :
+     une ancienne adresse #codes y mène. Le mode composé est dans Loi 2. */
   const ALIAS = { epargne: "avenir", patrimoine: "avenir" };
   const ANCIENNES = { "revenu/supervision": "comparer/demijournee", "revenu/actes": "comparer/actes", "comparer/loi2": "loi2/estimateur" };
-  const FINANCES = ["budget", "avenir", "impot"], TOUJOURS_DETAIL = ["donnees", "codes", "loi2"];
+  const FINANCES = ["budget", "avenir", "impot"], TOUJOURS_DETAIL = ["donnees", "loi2"];
   /* Sous-onglets de Comparer, du Budget et du Patrimoine : des pages plus courtes sur téléphone. Le choix est
      gardé sur cet appareil ; une adresse comme #budget/dettes ouvre directement un sous-onglet. */
   const SOUS_ONGLETS = {
@@ -4392,6 +4290,8 @@ window.Verrou.quandOuvert(function () {
      Le bouton Retour du téléphone ramène du détail au résumé. */
   function ouvrir(nom, sansRendu) {
     let [page, sous] = String(ANCIENNES[nom] || nom).split("/");
+    // Les codes ont leur propre outil : une ancienne adresse #codes y mène.
+    if (page === "codes") { location.replace("/codes/"); return; }
     nom = ALIAS[page] || page;
     const onglets = ongletsDe(nom);
     const sousOnglet = !!(sous && onglets && onglets.some(([k]) => k === sous));
@@ -4399,7 +4299,7 @@ window.Verrou.quandOuvert(function () {
     if (!document.getElementById("v-" + nom)) nom = "apercu";
     const detail = sous === "detail" || !!sousOnglet || TOUJOURS_DETAIL.includes(nom);
     document.getElementById("v-" + nom).classList.toggle("mode-detail", detail);
-    const adresse = "#" + nom + (detail && !["donnees", "codes"].includes(nom) ? "/" + (onglets ? sousChoisi(nom) : "detail") : "");
+    const adresse = "#" + nom + (detail && nom !== "donnees" ? "/" + (onglets ? sousChoisi(nom) : "detail") : "");
     // Téléphone : les boutons du haut suivent la page, à droite de son titre.
     document.querySelector(`#v-${nom} > .tete-page`).after(document.querySelector(".barre-outils"));
     document.getElementById("barre-pdf").hidden = nom !== "apercu";
@@ -4542,7 +4442,7 @@ window.Verrou.quandOuvert(function () {
       throw refus("Avec cette sauvegarde, le revenu ou le net ne se calcule pas. Rien n'a été changé.");
     return s;
   }
-  const messageRefus = err => err && err.texte ? err.texte : "Ce fichier n'est pas une sauvegarde WealthMorand. Rien n'a été changé.";
+  const messageRefus = err => err && err.texte ? err.texte : "Ce fichier n'est pas une sauvegarde Wealth Morand. Rien n'a été changé.";
   function restaurer(d, chiffree) {
     const pret = preparerImport(d);
     sortirPlan(true); S = pret; sauver();
@@ -4606,17 +4506,17 @@ window.Verrou.quandOuvert(function () {
     return m[1];
   }
   async function creerLienTransfert() {
-    if (!window.Verrou.disponible) { message("Ce navigateur ne peut pas chiffrer : ouvrez WealthMorand à son adresse habituelle (https)."); return; }
+    if (!window.Verrou.disponible) { message("Ce navigateur ne peut pas chiffrer : ouvrez Wealth Morand à son adresse habituelle (https)."); return; }
     let t;
     try { t = await window.Verrou.transfert.creer(JSON.stringify({ wealthmorand: "transfert", cree: new Date().toISOString(), donnees: racine() })); }
     catch (e) { message("Le lien n'a pas pu être créé. Exportez plutôt une sauvegarde."); return; }
     const lien = new URL("#transfert=" + t.charge, location.href).href;
     ouvrirFeuille("Passer à un autre appareil", c => {
-      c.appendChild(el("p", "resume feuille-intro", "Vos données de maintenant, chiffrées dans un lien. Sans le code, le lien ne révèle rien ; il ne passe par aucun serveur de WealthMorand."));
+      c.appendChild(el("p", "resume feuille-intro", "Vos données de maintenant, chiffrées dans un lien. Sans le code, le lien ne révèle rien ; il ne passe par aucun serveur de Wealth Morand."));
       const g1 = el("div", "groupe"); g1.appendChild(el("h3", null, "1. Envoyez ce lien à l'autre appareil"));
       g1.appendChild(el("p", "aide", "AirDrop, courriel à vous-même ou Messages."));
       const a = el("div", "actions");
-      if (navigator.share) a.appendChild(boutonSimple("Partager le lien", "", () => navigator.share({ title: "WealthMorand : transfert", url: lien }).catch(() => { /* partage annulé */ })));
+      if (navigator.share) a.appendChild(boutonSimple("Partager le lien", "", () => navigator.share({ title: "Wealth Morand : transfert", url: lien }).catch(() => { /* partage annulé */ })));
       a.appendChild(boutonSimple("Copier le lien", navigator.share ? "secondaire" : "", async () => {
         try { await navigator.clipboard.writeText(lien); toast("Lien copié."); } catch (e) { toast("Copie impossible ici : utilisez Partager."); }
       }));
@@ -4672,7 +4572,7 @@ window.Verrou.quandOuvert(function () {
     const a = el("div", "feuille-actions");
     a.appendChild(boutonSimple("Remplacer mes données", "danger plein large", remplacer || (() => {
       let av;
-      try { av = restaurer(d); } catch (err) { toast("Ces données ne sont pas une sauvegarde WealthMorand. Rien n'a été changé."); return; }
+      try { av = restaurer(d); } catch (err) { toast("Ces données ne sont pas une sauvegarde Wealth Morand. Rien n'a été changé."); return; }
       feuille.close(); ouvrir("apercu");
       if (av) annoncerAvance(av, "Données reçues de l'autre appareil. "); else toast("Données reçues de l'autre appareil.");
     })));
@@ -4698,7 +4598,7 @@ window.Verrou.quandOuvert(function () {
     boite.appendChild(inp); l.append(lab, boite);
     return l;
   }
-  // Nom d'utilisateur invisible : le trousseau du téléphone range la phrase sous « WealthMorand ».
+  // Nom d'utilisateur invisible : le trousseau du téléphone range la phrase sous « WealthMorand » (nom gardé : les phrases déjà enregistrées se retrouvent).
   function utilisateurCache() {
     const u = el("input", "cache-visuel"); u.type = "text"; u.autocomplete = "username"; u.value = "WealthMorand"; u.tabIndex = -1; u.setAttribute("aria-hidden", "true");
     return u;
@@ -4710,7 +4610,7 @@ window.Verrou.quandOuvert(function () {
     z.textContent = "";
     if (!V.disponible) {
       document.getElementById("verrou-etat").textContent = "Non offert";
-      z.appendChild(el("p", "aide", "Ce navigateur ne permet pas le chiffrement ici : ouvrez WealthMorand à son adresse habituelle (https)."));
+      z.appendChild(el("p", "aide", "Ce navigateur ne permet pas le chiffrement ici : ouvrez Wealth Morand à son adresse habituelle (https)."));
       return;
     }
     const f = el("form", "groupe");
@@ -4849,7 +4749,7 @@ window.Verrou.quandOuvert(function () {
     // aussi chaque fois que l'app revient à l'écran (application installée laissée ouverte).
     const avaitVersion = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (avaitVersion) toast("Une nouvelle version de WealthMorand est prête.", () => location.reload(), "Recharger", 20000);
+      if (avaitVersion) toast("Une nouvelle version de Wealth Morand est prête.", () => location.reload(), "Recharger", 20000);
     });
     navigator.serviceWorker.register("sw.js").then(reg => {
       document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") reg.update().catch(() => {}); });
@@ -4877,12 +4777,12 @@ window.Verrou.quandOuvert(function () {
   function etapesInstallation() {
     const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     const android = /Android/.test(ua), firefox = /Firefox|FxiOS/.test(ua), safariMac = !ios && /Macintosh/.test(ua) && /Safari/.test(ua) && !/Chrome|Chromium|Edg/.test(ua);
-    if (ios) return { titre: "Sur iPhone ou iPad", etapes: ["Ouvrez cette page dans Safari.", "Touchez le bouton Partager (le carré avec une flèche vers le haut), en bas de l'écran.", "Faites défiler et touchez « Sur l'écran d'accueil ».", "Touchez « Ajouter » : l'icône WealthMorand apparaît sur votre écran d'accueil."],
+    if (ios) return { titre: "Sur iPhone ou iPad", etapes: ["Ouvrez cette page dans Safari.", "Touchez le bouton Partager (le carré avec une flèche vers le haut), en bas de l'écran.", "Faites défiler et touchez « Sur l'écran d'accueil ».", "Touchez « Ajouter » : l'icône Wealth Morand apparaît sur votre écran d'accueil."],
       note: "L'application installée garde ses propres données, séparées de Safari : ouvrez-la, puis restaurez votre sauvegarde une fois (Données, Restaurer une sauvegarde)." };
-    if (android) return { titre: "Sur Android", etapes: ["Ouvrez cette page dans Chrome.", "Touchez le menu ⋮, en haut à droite.", "Touchez « Installer l'application » ou « Ajouter à l'écran d'accueil ».", "Confirmez : l'icône WealthMorand apparaît avec vos applications."] };
-    if (safariMac) return { titre: "Sur Mac, avec Safari", etapes: ["Dans le menu Fichier, choisissez « Ajouter au Dock ».", "Confirmez : WealthMorand s'ouvre dans sa propre fenêtre, depuis le Dock."] };
+    if (android) return { titre: "Sur Android", etapes: ["Ouvrez cette page dans Chrome.", "Touchez le menu ⋮, en haut à droite.", "Touchez « Installer l'application » ou « Ajouter à l'écran d'accueil ».", "Confirmez : l'icône Wealth Morand apparaît avec vos applications."] };
+    if (safariMac) return { titre: "Sur Mac, avec Safari", etapes: ["Dans le menu Fichier, choisissez « Ajouter au Dock ».", "Confirmez : Wealth Morand s'ouvre dans sa propre fenêtre, depuis le Dock."] };
     if (firefox) return { titre: "Avec Firefox", etapes: ["Firefox n'installe pas les applications web.", "Ouvrez cette page dans Chrome, Edge ou Safari, puis touchez « Installer » de nouveau.", "Ou ajoutez la page à vos favoris : elle fonctionne aussi sans connexion après une première visite."] };
-    return { titre: "Sur ordinateur", etapes: ["Dans la barre d'adresse, cliquez sur l'icône d'installation (un écran avec une flèche), à droite.", "Ou ouvrez le menu du navigateur, puis « Installer WealthMorand » (Chrome) ou « Applications », « Installer ce site » (Edge).", "WealthMorand s'ouvre alors dans sa propre fenêtre."] };
+    return { titre: "Sur ordinateur", etapes: ["Dans la barre d'adresse, cliquez sur l'icône d'installation (un écran avec une flèche), à droite.", "Ou ouvrez le menu du navigateur, puis « Installer Wealth Morand » (Chrome) ou « Applications », « Installer ce site » (Edge).", "Wealth Morand s'ouvre alors dans sa propre fenêtre."] };
   }
   async function installer() {
     if (invite) {
@@ -4893,7 +4793,7 @@ window.Verrou.quandOuvert(function () {
     }
     const e = etapesInstallation();
     ouvrirFeuille("Installer l'application", c => {
-      c.appendChild(el("p", "resume feuille-intro", "WealthMorand s'installe sur l'écran d'accueil comme une vraie application : icône, plein écran, et elle fonctionne sans connexion. Aucun magasin d'applications, aucun compte."));
+      c.appendChild(el("p", "resume feuille-intro", "Wealth Morand s'installe sur l'écran d'accueil comme une vraie application : icône, plein écran, et elle fonctionne sans connexion. Aucun magasin d'applications, aucun compte."));
       const g = el("div", "groupe"); g.appendChild(el("h3", null, e.titre));
       const ol = el("ol", "etapes"); e.etapes.forEach(x => ol.appendChild(el("li", null, x))); g.appendChild(ol); c.appendChild(g);
       if (e.note) c.appendChild(el("p", "aide", e.note));
@@ -4906,7 +4806,7 @@ window.Verrou.quandOuvert(function () {
     });
   }
   window.addEventListener("beforeinstallprompt", ev => { ev.preventDefault(); invite = ev; marquerInstallee(false); majInstaller(); });
-  window.addEventListener("appinstalled", () => { invite = null; marquerInstallee(true); majInstaller(); toast("WealthMorand est installée."); });
+  window.addEventListener("appinstalled", () => { invite = null; marquerInstallee(true); majInstaller(); toast("Wealth Morand est installée."); });
   document.querySelectorAll("[data-installer]").forEach(b => b.addEventListener("click", installer));
   majInstaller();
 
@@ -4926,13 +4826,19 @@ window.Verrou.quandOuvert(function () {
   const TYPES_ASSISTANT = ["urgence", "hospitalisation", "obstetrique", "palliatifs", "chsld", "garde"].filter(k => ACTIVITES[k]);
   let A = null, etape = 0;
   const reponsesVides = () => ({ famille: null, depuis12mois: true, enfantCommun: false, partenaire: "salarie", revenuPartenaire: 0,
-    enfants: [], milieu: null, mode: "horaire", demiJournees: 8, totalGmfu: 8, admin: 0, srv: 0, premiere: true, incorporee: false,
-    patientsParDJ: null, patientsSRV: null, heuresParDJ: 4, vacances: 6, enseignement: 2, residents: 1, inscrits: 0, nouveaux: 0, vulnerables: 0, membreGmf: null, fraisPct: null, territoire: false, majoration: null,
+    enfants: [], milieu: null, mode: "horaire", demiJournees: 8, totalGmfu: 8, admin: 0, srv: 0, anneePratique: "", lieuGmfu: null, gmf: null, externes: 0, depensesPro: 0, incorporee: false,
+    patientsParDJ: null, patientsSRV: null, heuresParDJ: 4, vacances: 6, enseignement: 2, residents: 1, inscrits: 0, nouveaux: 0, vulnerables: 0, fraisPct: null, territoire: false, majoration: null,
     statut: "pratique", niveau: "1", debutPratique: (() => { const d = new Date(); return `${d.getMonth() >= 6 ? d.getFullYear() + 1 : d.getFullYear()}-07`; })(),
     ...Object.fromEntries(TYPES_ASSISTANT.flatMap(k => [["act_" + k, false], ["actN_" + k, 4], ["actR_" + k, false], ["actJ_" + k, ACTIVITES[k].parJour]])),
     logement: null, loyer: 0, maison: 0, hypotheque: 0, tauxHyp: 4.5, paiementHyp: 0, partMaison: 50,
     marge: false, margeSolde: 0, margeTaux: 4.5, pret: false, pretSolde: 0, pretTaux: null, pretPaiement: 0, auto: false, autoSolde: 0, autoTaux: null, autoPaiement: 0 });
   const enCouple = () => A.famille === "maries" || A.famille === "fait";
+  // Première année : en résidence (la pratique à venir) ou si la personne le dit. Rien n'est supposé.
+  const premiereAnnee = (a = A) => a.statut === "residence" || String(a.anneePratique) === "1";
+  const ANNEES_PRATIQUE = [["1", "1re année"], ["2", "2e année"], ["3", "3e année"], ["4", "4e année"], ["5", "5e année ou plus"]];
+  // Frais de cabinet : en clinique, et en GMF-U situé dans une clinique privée (qui facture aux tarifs du cabinet).
+  const avecFrais = (a = A) => a.milieu === "clinique" || (a.milieu === "gmfu" && a.lieuGmfu === "cabinet");
+  const membreGmf = (a = A) => a.milieu === "gmfu" || a.gmf === "oui";   // un GMF-U est un GMF
 
   // Morceaux de formulaire : choix illustrés (boutons radio), nombres, cases.
   function asChoix(legende, cle, options) {
@@ -4961,11 +4867,12 @@ window.Verrou.quandOuvert(function () {
     inp.addEventListener("change", () => { A[cle] = inp.checked; if (refaire) { rendreEtape(); document.getElementById("as-" + cle).focus(); } });
   }, false);
 
-  // Part remise à la clinique : demandée en clinique, sans valeur par défaut (0 s'inscrit).
-  const asFrais = () => asNombre("Part de votre facturation remise à la clinique", "fraisPct", "%", 0.5, "Les frais de cabinet : loyer, personnel, équipement. Souvent de 25 à 35 % en clinique privée. 0 si vous n'en remettez aucune.", true);
-  const fraisManquants = () => A.milieu === "clinique" && A.fraisPct == null ? "Inscrivez la part de votre facturation remise à la clinique (0 si vous n'en remettez aucune)." : "";
+  // Part remise à la clinique : demandée en clinique (et en GMF-U situé dans une clinique privée), sans valeur par défaut (0 s'inscrit).
+  const asFrais = () => asNombre("Part de votre facturation remise à la clinique", "fraisPct", "%", 0.5, "Les frais de cabinet : loyer, personnel, équipement. Souvent de 25 à 35 % en clinique privée. 0 si vous n'en remettez aucune."
+    + (A.milieu === "gmfu" ? " Comptés à l'acte ; si la clinique les exige aussi au taux horaire et au mixte, cochez-le ensuite (Revenu, Modifier)." : ""), true);
+  const fraisManquants = () => avecFrais() && A.fraisPct == null ? "Inscrivez la part de votre facturation remise à la clinique (0 si vous n'en remettez aucune)." : "";
   const ETAPES = [
-    { titre: "Bienvenue dans WealthMorand", bouton: "Portrait complet", rendre: c => {
+    { titre: "Bienvenue dans Wealth Morand", bouton: "Portrait complet", rendre: c => {
       c.appendChild(el("p", "as-intro", "Comparez vos modes de rémunération en deux questions : votre pratique, puis votre semaine. Ou faites votre portrait complet (famille, pratique, logement, dettes), en deux minutes. Tout reste sur cet appareil, et tout se modifie ensuite."));
       const r = el("div", "actions"), vite = el("button", "bouton", "Comparer mes modes en 30 secondes"); vite.type = "button"; vite.id = "as-rapide";
       vite.addEventListener("click", () => { A.rapide = true; etape = 0; points(); rendreEtape(); document.getElementById("as-titre").focus(); });
@@ -4999,7 +4906,10 @@ window.Verrou.quandOuvert(function () {
       c.appendChild(asGroupe(nb$, ...ages));
       c.appendChild(el("p", "aide", "Les allocations familiales, l'assurance médicaments et le REEE en dépendent. Pour un enfant de moins d'un an, inscrivez 0."));
     } },
-    { titre: "Votre pratique", valide: () => !A.milieu ? "Choisissez votre milieu de pratique."
+    { titre: "Votre pratique", valide: () => A.statut !== "residence" && !A.anneePratique ? "Choisissez votre année de pratique."
+      : !A.milieu ? "Choisissez votre milieu de pratique."
+      : A.milieu === "gmfu" && !A.lieuGmfu ? "Indiquez où se trouve votre GMF-U."
+      : A.milieu !== "gmfu" && !A.gmf ? "Indiquez si vous êtes membre d'un GMF."
       : A.territoire && !(A.majoration > 0) ? "Inscrivez la majoration de votre territoire, en pourcentage." : "", rendre: c => {
       // En résidence : le niveau et le début de la pratique ; les questions suivantes décrivent la pratique à venir.
       c.appendChild(asChoix("Où en êtes-vous ?", "statut", [["pratique", "En pratique"], ["residence", "En résidence", "Salaire de résident (échelle de la FMRQ) jusqu'au début de la pratique"]]));
@@ -5011,11 +4921,21 @@ window.Verrou.quandOuvert(function () {
         creerChamp({ l: "Début de la pratique", t: "month" }, "as-debutPratique", inp => {
           inp.value = A.debutPratique; inp.addEventListener("change", () => { A.debutPratique = inp.value; });
         }, false)));
+      // L'année de pratique se choisit : rien n'est coché d'avance.
+      else c.appendChild(asGroupe(creerChamp({ l: "Votre année de pratique", t: "select", o: [["", "Choisir…"], ...ANNEES_PRATIQUE],
+        h: "Depuis votre permis. La 1re année, la clientèle se bâtit et aucun acompte d'impôt n'est exigé. Les quatre premières années, la majoration de la pratique polyvalente s'obtient avec moins de patients inscrits (EP 40, par. 16.04)." }, "as-anneePratique", inp => {
+        inp.value = A.anneePratique || ""; inp.addEventListener("change", () => { A.anneePratique = inp.value; });
+      }, false)));
       c.appendChild(asChoix(residence ? "Votre future pratique : milieu principal" : "Votre milieu principal", "milieu", Object.entries(MILIEUX).map(([k, m]) => [k, m.long, DESCRIPTION_MILIEU[k]])));
       if (A.milieu && MILIEUX[A.milieu].modes.length > 1) c.appendChild(asChoix("Votre mode de rémunération", "mode", [
         ["horaire", "Taux horaire", "Les heures, plus des forfaits et des suppléments"],
         ["mixte", "Mixte", "Un forfait par heure, plus une part du tarif des visites"],
         ["acte", "À l'acte", "Chaque visite payée selon son tarif"]]));
+      // GMF-U : en établissement ou dans une clinique privée (colonne de tarifs des visites). Ailleurs : membre d'un GMF, oui ou non.
+      if (A.milieu === "gmfu") c.appendChild(asChoix("Où se trouve votre GMF-U ?", "lieuGmfu", [
+        ["etablissement", "En CLSC ou à l'hôpital", "Tarifs des visites en établissement"],
+        ["cabinet", "Dans une clinique privée", "Tarifs des visites en cabinet, avec des frais de cabinet s'il y en a"]]));
+      else if (A.milieu) c.appendChild(asChoix("Membre d'un GMF ?", "gmf", [["oui", "Oui", "Forfait de 9,35 $ par patient inscrit vu dans l'année"], ["non", "Non"]]));
       // Territoire désigné (annexes XII et XII-A) : la personne inscrit le pourcentage de son territoire.
       if (A.milieu) c.appendChild(asGroupe(asCase("Je pratique en territoire désigné", "territoire", "Rémunération majorée dans les territoires des annexes XII et XII-A de l'entente : sur les visites, les heures, les activités et les forfaits d'inscription ; pas sur les suppléments.", true),
         A.territoire && asNombre("Majoration de votre territoire", "majoration", "%", 0.5, "Celle de votre territoire : par exemple 15 pour 115 %.", true)));
@@ -5052,12 +4972,14 @@ window.Verrou.quandOuvert(function () {
         !gmfu && asNombre("Demi-journées de sans rendez-vous (SRV)", "srv", "d.-j.", 1, null),
         si(() => A.srv > 0, asNombre("Patients par demi-journée de SRV", "patientsSRV", "pat.", 0.5, null, true)),
         gmfu && si(() => A.enseignement > 0, asNombre("Résidents supervisés en même temps", "residents", "rés.", 1, "Pendant une demi-journée d'enseignement, en moyenne.", true)),
+        gmfu && si(() => A.enseignement > 0, asNombre("Externes supervisés en même temps", "externes", "ext.", 1, "0 si vous n'en supervisez pas.", true)),
         A.rapide && asNombre("Patients inscrits, environ", "inscrits", "pat.", 50, "Facultatif : les forfaits annuels en dépendent (forfait GMF, patients vulnérables)."),
+        A.rapide && premiereAnnee() && asNombre("Nouveaux patients attendus la première année", "nouveaux", "pat.", 1, "Ceux du guichet d'accès : chacun donne un supplément d'inscription et une visite de prise en charge."),
+        A.rapide && asNombre("Patients vulnérables", "vulnerables", "%", 1, "Facultatif : au moins un code de vulnérabilité ; un forfait annuel de plus par patient."),
         heures && asNombre("Heures par demi-journée", "heuresParDJ", "h", 0.25, "Pour le taux horaire et le forfait horaire du mixte."),
-        A.rapide && A.milieu === "clinique" && asFrais(),
+        A.rapide && avecFrais() && asFrais(),
         asNombre("Semaines de vacances par année", "vacances", "sem.", 1, A.rapide ? "Vos semaines en clinique : 52 moins ces vacances. Si vous faites des jours à l'hôpital à la place de la clinique, retirez-les ensuite (Revenu, Modifier)."
           : "Vos semaines en clinique : 52 moins ces vacances, et moins les jours à l'hôpital qui remplacent la clinique (étape des activités)."),
-        !residence && asCase("C'est ma première année de pratique", "premiere", "La clientèle se bâtit, et aucun acompte d'impôt n'est exigé la première année."),
         asCase("Ma pratique est incorporée", "incorporee", "Les paiements de la RAMQ sont versés à votre société.")));
       const maj = () => {
         conds.forEach(([champ, pred]) => { if (champ) champ.hidden = !pred(); });
@@ -5067,13 +4989,12 @@ window.Verrou.quandOuvert(function () {
       c.addEventListener("input", maj); maj();
     } },
     { titre: "Votre clientèle", valide: fraisManquants, rendre: c => {
-      const nouvelle = A.premiere || A.statut === "residence", clinique = A.milieu === "clinique";
-      if (A.membreGmf === null) A.membreGmf = A.milieu === "gmfu";
+      const nouvelle = premiereAnnee();
       c.appendChild(asGroupe(asNombre(nouvelle ? "Patients déjà inscrits au départ" : "Patients inscrits auprès de vous", "inscrits", "pat."),
         nouvelle && asNombre("Nouveaux patients attendus la première année", "nouveaux", "pat.", 1, "Ceux du guichet d'accès : chacun donne un supplément d'inscription et une visite de prise en charge."),
         asNombre("Patients vulnérables", "vulnerables", "%", 1, "Au moins un code de vulnérabilité : un forfait annuel de plus par patient."),
-        asCase("Membre d'un GMF", "membreGmf", "Forfait de 9,35 $ par patient inscrit vu dans l'année. Un GMF-U est un GMF."),
-        clinique && asFrais()));
+        avecFrais() && asFrais(),
+        asNombre("Dépenses professionnelles par année, environ", "depensesPro", "$/an", 500, "Facultatif : cotisations, assurances, formation et autres, sans les frais de cabinet. Elles réduisent votre revenu imposable ; détaillez-les ensuite dans la page Impôt.")));
       c.appendChild(el("p", "aide", "Tout le reste (types de visites, tarifs, forfaits, apprenants) part des valeurs de la RAMQ : précisez-le ensuite dans Revenu, Modifier."));
     } },
     { titre: "Vos activités en établissement", valide: () => {
@@ -5124,13 +5045,13 @@ window.Verrou.quandOuvert(function () {
       c.appendChild(rangees(el("div"), [
         { titre: "Famille", sous: !couple ? "Sans partenaire" : `En couple, ${A.famille === "fait" ? "union de fait" : "mariage ou union civile"} · partenaire ${A.partenaire === "sans" ? "sans revenu de travail" : `${A.partenaire === "salarie" ? "en emploi salarié" : "à son compte"}, ${$(A.revenuPartenaire)} par année`}` },
         { titre: "Enfants", sous: n ? `${n} enfant${n > 1 ? "s" : ""} : ${A.enfants.map(a => `${nb(a, 0)} an${a >= 2 ? "s" : ""}`).join(", ")}` : "Aucun" },
-        { titre: "Pratique", sous: `${MILIEUX[A.milieu].nom}${MILIEUX[A.milieu].modes.length > 1 ? ` · ${NOM_MODE[A.mode].toLowerCase()}` : ""} · ${resumeSemaine(A)}${A.srv ? ` et ${nb(A.srv)} de SRV` : ""} par semaine · ${nb(semainesClinique(A))} semaines en clinique${A.premiere || A.statut === "residence" ? " · première année" : ""}${A.incorporee ? " · incorporée" : ""}${A.territoire ? ` · territoire désigné, majoration de ${nb(A.majoration || 0)} %` : ""}` },
-        { titre: "Clientèle", sous: `${nb(A.inscrits || 0)} inscrits${A.premiere || A.statut === "residence" ? `, ${nb(A.nouveaux || 0)} nouveaux attendus` : ""} · ${nb(A.vulnerables || 0)} % vulnérables${A.membreGmf ? " · GMF" : ""}${A.milieu === "clinique" ? ` · ${nb(A.fraisPct || 0)} % remis à la clinique` : ""}` },
+        { titre: "Pratique", sous: `${MILIEUX[A.milieu].nom}${MILIEUX[A.milieu].modes.length > 1 ? ` · ${NOM_MODE[A.mode].toLowerCase()}` : ""} · ${resumeSemaine(A)}${A.srv ? ` et ${nb(A.srv)} de SRV` : ""} par semaine · ${nb(semainesClinique(A))} semaines en clinique${A.statut === "residence" ? " · première année" : ` · ${(ANNEES_PRATIQUE.find(x => x[0] === String(A.anneePratique)) || ["", ""])[1]}`}${A.milieu === "gmfu" ? (A.lieuGmfu === "cabinet" ? " · en clinique privée (tarifs du cabinet)" : " · en CLSC ou à l'hôpital") : ""}${A.incorporee ? " · incorporée" : ""}${A.territoire ? ` · territoire désigné, majoration de ${nb(A.majoration || 0)} %` : ""}` },
+        { titre: "Clientèle", sous: `${nb(A.inscrits || 0)} inscrits${premiereAnnee() ? `, ${nb(A.nouveaux || 0)} nouveaux attendus` : ""} · ${nb(A.vulnerables || 0)} % vulnérables${membreGmf() ? " · membre d'un GMF" : " · hors GMF"}${avecFrais() ? ` · ${nb(A.fraisPct || 0)} % remis à la clinique` : ""}${A.depensesPro > 0 ? ` · dépenses professionnelles de ${$(A.depensesPro)} par année` : ""}` },
         { titre: "Activités en établissement", sous: TYPES_ASSISTANT.filter(k => A["act_" + k] && A["actN_" + k] > 0).map(k => `${ACTIVITES[k].nom} : ${nb(A["actN_" + k])} par mois à ${$(A["actJ_" + k])}${A["actR_" + k] ? ", à la place de la clinique" : ""}`).join(" · ") || "Aucune" },
         { titre: "Logement", sous: A.logement === "locataire" ? `Locataire · ${$(A.loyer)} par mois` : `Propriétaire · maison de ${$(A.maison)}${A.hypotheque ? `, hypothèque de ${$(A.hypotheque)}` : ""}` },
         { titre: "Autres dettes", sous: det.length ? det.join(" · ") : "Aucune" },
       ]));
-      c.appendChild(el("p", "aide", "Ensuite : entrez vos dépenses du mois (page Budget) et vos dépenses professionnelles (page Impôt). Les tarifs de la RAMQ, l'impôt et les hypothèses de l'avenir sont déjà en place."));
+      c.appendChild(el("p", "aide", `Ensuite : entrez vos dépenses du mois (page Budget)${A.depensesPro > 0 ? "" : " et vos dépenses professionnelles (page Impôt)"}. Les tarifs de la RAMQ, l'impôt et les hypothèses de l'avenir sont déjà en place.`));
     } },
   ];
 
@@ -5178,10 +5099,10 @@ window.Verrou.quandOuvert(function () {
 
   // La semaine en mots : « 6 demi-journées de clinique à 8 patients, 2 d'enseignement (1 résident) ».
   function resumeSemaine(A) {
-    const dj = Math.max(0, +A.demiJournees || 0), ens = A.milieu === "gmfu" ? Math.min(dj, Math.max(0, +A.enseignement || 0)) : 0, res = Math.max(0, +A.residents || 0);
+    const dj = Math.max(0, +A.demiJournees || 0), ens = A.milieu === "gmfu" ? Math.min(dj, Math.max(0, +A.enseignement || 0)) : 0, res = Math.max(0, +A.residents || 0), ext = Math.max(0, +A.externes || 0);
     const clinique = `${nb(dj - ens)} demi-journée${dj - ens > 1 ? "s" : ""} de clinique à ${nb(A.patientsParDJ || 0)} patients`;
     const adm = A.milieu === "gmfu" ? Math.max(0, +A.admin || 0) : 0, admTexte = adm > 0 ? `, ${nb(adm)} administrative${adm > 1 ? "s" : ""}` : "";
-    return (ens > 0 ? `${clinique}, ${nb(ens)} d'enseignement (${nb(res)} résident${res > 1 ? "s" : ""})` : clinique) + admTexte;
+    return (ens > 0 ? `${clinique}, ${nb(ens)} d'enseignement (${nb(res)} résident${res > 1 ? "s" : ""}${ext > 0 ? `, ${nb(ext)} externe${ext > 1 ? "s" : ""}` : ""})` : clinique) + admTexte;
   }
   /* Semaines en clinique : 52 moins les vacances, moins les jours d'activités qui remplacent la clinique,
      convertis en semaines selon les jours en clinique par semaine (deux demi-journées font un jour ; un quart compte
@@ -5205,21 +5126,23 @@ window.Verrou.quandOuvert(function () {
     // Pratique
     const dj = Math.min(12, Math.max(0, A.demiJournees || 0)), gmfu = A.milieu === "gmfu";
     // En résidence : la pratique à venir commence par une première année.
-    const residence = A.statut === "residence";
+    const residence = A.statut === "residence", premiere = premiereAnnee(A), anPratique = Math.min(5, Math.max(2, Math.round(+A.anneePratique || 2)));
     s.residence = { ...s.residence, active: residence, niveau: String(A.niveau || 1), debutPratique: residence ? A.debutPratique || "" : "", vue: "residence" };
-    Object.assign(s.revenu, { milieu: A.milieu, annee: A.premiere || residence ? "premiere" : "type",
-      anneePremiere: residence ? +String(A.debutPratique || "").slice(0, 4) || 0 : A.premiere ? auj.getFullYear() : 0, modeBudget: MILIEUX[A.milieu].modes.includes(A.mode) ? A.mode : MILIEUX[A.milieu].modes[0],
+    Object.assign(s.revenu, { milieu: A.milieu, annee: premiere ? "premiere" : "type", anneePratique: String(anPratique),   // après la première année : la 2e
+      lieuTarifs: gmfu && A.lieuGmfu === "cabinet" ? "cabinet" : "auto",
+      anneePremiere: residence ? +String(A.debutPratique || "").slice(0, 4) || 0 : premiere ? auj.getFullYear() : 0, modeBudget: MILIEUX[A.milieu].modes.includes(A.mode) ? A.mode : MILIEUX[A.milieu].modes[0],
       demiJournees: dj, enseignement: gmfu ? Math.min(dj, Math.max(0, Math.round(+A.enseignement || 0))) : 0,
-      residents: gmfu && A.enseignement > 0 ? Math.min(6, Math.max(0, Math.round(+A.residents || 0))) : 0, demiJourneesSRV: A.srv || 0, patientsSRV: A.srv ? A.patientsSRV || 0 : 0,
+      residents: gmfu && A.enseignement > 0 ? Math.min(6, Math.max(0, Math.round(+A.residents || 0))) : 0,
+      externes: gmfu && A.enseignement > 0 ? Math.min(6, Math.max(0, Math.round(+A.externes || 0))) : 0, demiJourneesSRV: A.srv || 0, patientsSRV: A.srv ? A.patientsSRV || 0 : 0,
       demiJourneesAdmin: gmfu ? Math.min(14, Math.max(0, +A.admin || 0)) : 0, majorationPct: A.territoire ? Math.min(100, Math.max(0, +A.majoration || 0)) : 0,
       patientsParDJ: A.patientsParDJ || 0, heuresParDJ: A.heuresParDJ || 4, semaines: semainesClinique(A), semainesArrivee: semainesClinique(A), autresRevenus: 0,
-      inscritsDebut: Math.max(0, A.inscrits || 0), nouveauxGuichet: A.premiere || residence ? Math.max(0, A.nouveaux || 0) : 0, nouveauxSansMedecin: 0, nouveauxTransferes: 0,
+      inscritsDebut: Math.max(0, A.inscrits || 0), nouveauxGuichet: premiere ? Math.max(0, A.nouveaux || 0) : 0, nouveauxSansMedecin: 0, nouveauxTransferes: 0,
       nouveauxAnGuichet: 0, nouveauxAnSansMedecin: 0, partVulnerable: Math.min(100, Math.max(0, A.vulnerables || 0)), partTresVulnerable: 0, partGroupe2: 0, partGroupe34: 0,
-      membreGmf: A.membreGmf == null ? gmfu : !!A.membreGmf, primeInscription: 0, fraisCabinetPct: A.milieu === "clinique" ? Math.min(100, Math.max(0, A.fraisPct || 0)) : 0, fraisCabinetMois: 0, lignes: [],
+      membreGmf: membreGmf(A), primeInscription: 0, fraisCabinetPct: avecFrais(A) ? Math.min(100, Math.max(0, A.fraisPct || 0)) : 0, fraisCabinetMois: 0, lignes: [],
       activites: TYPES_ASSISTANT.filter(k => A["act_" + k] && A["actN_" + k] > 0).map(k => ({ id: nouvelId("a"), type: k, nom: "", nombre: A["actN_" + k], frequence: "mois", cycle: 6,
         calcul: "jour", parJour: Math.max(0, +A["actJ_" + k] || 0), patients: ACTIVITES[k].patients, parPatient: ACTIVITES[k].parPatient })) });
     s.confirmes["revenu.membreGmf"] = true;   // demandé dans l'assistant
-    s.impot = { ...s.impot, structure: A.incorporee ? "societe" : "particulier", depensesPro: 0, depensesProMode: "total", depensesProDetail: [] };
+    s.impot = { ...s.impot, structure: A.incorporee ? "societe" : "particulier", depensesPro: A.rapide ? 0 : Math.max(0, +A.depensesPro || 0), depensesProMode: "total", depensesProDetail: [] };
     s.societe = { ...s.societe, solde: 0 };
     // Famille
     Object.assign(s.conjointe, { active: couple, designation: "partenaire", lien: A.famille === "fait" ? "fait" : "maries",

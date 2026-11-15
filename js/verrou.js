@@ -1,4 +1,4 @@
-/* WealthMorand — verrou par phrase de passe, facultatif.
+/* Wealth Morand — verrou par phrase de passe, facultatif.
    Activé, il chiffre les données gardées dans ce navigateur : AES-GCM 256 bits, clé tirée de la
    phrase par PBKDF2-SHA-256 (600 000 itérations, sel au hasard). La phrase n'est jamais gardée ;
    seule la clé reste en mémoire, tant que l'app est ouverte. Une phrase oubliée ne se retrouve pas.
@@ -188,7 +188,7 @@
   document.documentElement.classList.add("verrouille");
   const form = document.getElementById("verrou-form"), champ = document.getElementById("verrou-phrase");
   const msg = document.getElementById("verrou-message"), bouton = document.getElementById("verrou-ouvrir");
-  if (!subtle) { msg.textContent = "Ce navigateur ne peut pas ouvrir des données chiffrées : ouvrez WealthMorand à son adresse habituelle (https)."; bouton.disabled = true; }
+  if (!subtle) { msg.textContent = "Ce navigateur ne peut pas ouvrir des données chiffrées : ouvrez Wealth Morand à son adresse habituelle (https)."; bouton.disabled = true; }
   form.addEventListener("submit", async e => {
     e.preventDefault();
     if (!champ.value || bouton.disabled) return;

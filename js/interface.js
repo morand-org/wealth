@@ -1,4 +1,4 @@
-/* WealthMorand — formats, petits composants et graphique en lignes : montants, pastilles,
+/* Wealth Morand — formats, petits composants et graphique en lignes : montants, pastilles,
    rangées, contrôles segmentés, tableaux, graphique avec réticule. Ils ne connaissent pas
    les données de l'utilisateur : app.js leur passe ce qu'il faut afficher. */
 (function () {

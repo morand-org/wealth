@@ -1,4 +1,4 @@
-/* WealthMorand — rapport PDF. Construit, à la demande, un rapport mis en page pour
+/* Wealth Morand — rapport PDF. Construit, à la demande, un rapport mis en page pour
    l'impression (format Lettre), avec graphiques en couleurs, puis ouvre la boîte
    d'impression du navigateur : « Enregistrer en PDF ». Rien ne quitte l'appareil.
    Démarre après app.js, une fois les données ouvertes (verrou.js). */
@@ -422,7 +422,7 @@ window.Verrou.quandOuvert(function () {
     let st = document.getElementById("rapport-style");
     if (!st) { st = document.createElement("style"); st.id = "rapport-style"; document.head.appendChild(st); }
     const police = `font-family: "Inter", sans-serif; font-size: 7.5pt; color: #8b8981;`;
-    st.textContent = `@page { @bottom-left { content: "WealthMorand · ${genre} du ${date.replace(/"/g, "")} · Estimations seulement"; ${police} } @bottom-right { content: "Page " counter(page) " de " counter(pages); ${police} } }`;
+    st.textContent = `@page { @bottom-left { content: "Wealth Morand · ${genre} du ${date.replace(/"/g, "")} · Estimations seulement"; ${police} } @bottom-right { content: "Page " counter(page) " de " counter(pages); ${police} } }`;
   }
 
   /* Fiche d'une page : l'essentiel, pour un ou une partenaire, un comptable ou un conseiller. */
@@ -464,7 +464,7 @@ window.Verrou.quandOuvert(function () {
           ${objs.length ? tableau(["Objectif", "Visé", "Par mois"], objs.map(o => ({ c: [`${o.nom || "Objectif"}${o.date ? ` · ${o.date}` : ""}`, $(+o.cible || 0), o.atteint ? "atteint" : $(o.dedie ? o.mensuel : Math.max(0, o.mensuel - o.prevu))] })), "compact") : ""}
           <ul class="rp-jalons">${jal.map(j => `<li><b>${esc(j.jalon.mois ? `${j.jalon.mois} ${j.jalon.annee}` : j.jalon.annee)}</b><span>${esc(j.titre)}</span></li>`).join("")}</ul></div>
       </div>
-      <p class="rp-avis">Estimations seulement : ni avis fiscal, ni avis financier. Rapport complet : page Données de WealthMorand.</p>`);
+      <p class="rp-avis">Estimations seulement : ni avis fiscal, ni avis financier. Rapport complet : page Données de Wealth Morand.</p>`);
   }
 
   /* Sommaire pour le comptable : sur une page, ce qu'il faut pour les déclarations de l'année

@@ -1,6 +1,6 @@
 # Règles pour les agents (Cursor et autres)
 
-WealthMorand est une application web statique (PWA) pour les médecins de
+Wealth Morand est une application web statique (PWA) pour les médecins de
 famille du Québec, en résidence ou en pratique : revenu (RAMQ, échelle de la
 FMRQ), impôt, budget du ménage, dettes, patrimoine. Tout est calculé dans le
 navigateur ; aucune donnée ne quitte l'appareil. Interface en français
@@ -46,8 +46,8 @@ Lisez ce fichier en entier avant de commencer. Il passe avant vos habitudes.
      chiffrées sur l'appareil, conception décrite dans `README.md`. Le lien de
      transfert avec code reste offert.
    - Chaque page : un résumé, puis « Voir tout le détail ». Barre du bas : Revenu,
-     Comparer, Codes (répertoire des actes, codes de vulnérabilité, CNESST), Loi 2, Finances (« Budget ·
-     Patrimoine · Impôt ») ; l'Aperçu s'ouvre par le logo. Tout en haut, le bandeau
+     Comparer, Loi 2, Finances (« Budget · Patrimoine · Impôt ») ; les codes (répertoire des actes, codes de
+     vulnérabilité, CNESST) sont dans Codes Morand (`/codes/`, dépôt du site), que le bandeau du haut ouvre ; l'Aperçu s'ouvre par le logo. Tout en haut, le bandeau
      « MORAND · MÉDECINE FAMILIALE » mène à l'accueil de morand.org.
    - Identité visuelle : polices Inter et Newsreader hébergées dans
      `polices/`, couleurs de `styles.css`. Pas de « pas à pas ».
@@ -58,7 +58,7 @@ Lisez ce fichier en entier avant de commencer. Il passe avant vos habitudes.
 | Fichier | Rôle |
 |---|---|
 | `js/calc.js` | Moteur de calcul pur (`window.Calc`, aussi chargé par Node) : `P2026` (paramètres fiscaux), tarifs de la RAMQ (`TARIFS_LIEU`, `MONTANTS_LIEU`), `impotParticulier`, `impotSalarie`, `impotMixte`, `FMRQ` et `salaireResident`, `simulerDettes`, `projeterValeurNette`, `projeterReee`, `fraisGarde`, `prestationsFamille`. |
-| `js/repertoire.js` | Répertoire des actes d'un médecin en GMF-U en établissement, au mode mixte (`window.Repertoire`) : codes, tarifs du manuel de la RAMQ, part payée au mixte, groupes ; recherche dans Revenu, onglet Actes. |
+| `js/repertoire.js` | Répertoire des actes d'un médecin en GMF-U en établissement, au mode mixte (`window.Repertoire`) : codes, tarifs du manuel de la RAMQ, part payée au mixte, groupes. La page n'est plus chargée par l'application : c'est la source de Codes Morand (`outils/construire-codes.mjs` du dépôt du site la lit) et des tests de calcul. Après un changement, regénérer `/codes/` dans le dépôt du site. |
 | `js/catalogues.js` | État de départ (exemple fictif), schéma `CHAMPS` (validation et migration des données importées), panneaux « Modifier » (`FEUILLES`), lexique des sigles. |
 | `js/app.js` | Calcul des résultats (`calculer()` → `R`), rendu des pages (`rendre*`, résumés `resume*`), navigation (`ouvrir()`, routes `#page` et `#page/detail`), « À faire », échéances, trésorerie, assistant de départ, lien de transfert. |
 | `js/interface.js` | Petits outils d'interface : `el()`, `rangees()`, graphiques SVG, lexique. |

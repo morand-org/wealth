@@ -60,6 +60,13 @@ const resultat = p => p.evaluate(() => { const R = window.Wealthnord.resultats()
 const aFaire = p => p.evaluate(() => [...document.querySelectorAll("#ap-actions li")].map(l => l.textContent.replace(/\s/g, " ")));
 const allerA = async (p, page) => { await p.evaluate(h => { location.hash = "#" + h; }, page); await p.waitForTimeout(250); };
 // Remplace l'état enregistré (chemins « revenu.milieu »…), puis recharge l'app.
+// Assistant, étape « Votre pratique » : l'année de pratique, le milieu, puis le lieu du GMF-U ou « membre d'un GMF » (rien n'est supposé).
+async function pratique(p, milieu, { annee = "1", gmf = "non", lieu = "etablissement" } = {}) {
+  await p.selectOption("#as-anneePratique", annee);
+  await p.check(`input[name="as-milieu"][value="${milieu}"]`);
+  if (milieu === "gmfu") await p.check(`input[name="as-lieuGmfu"][value="${lieu}"]`);
+  else await p.check(`input[name="as-gmf"][value="${gmf}"]`);
+}
 async function remplacer(p, modifs) {
   await p.evaluate(m => {
     const S = JSON.parse(JSON.stringify(window.Wealthnord.etat()));
@@ -564,7 +571,7 @@ async function apercuCoherent(b, base) {
   await p.click("#ap-assistant");
   const suivant = () => p.click("#as-suivant");
   await suivant(); await p.check('input[name="as-famille"][value="seul"]'); await suivant(); await suivant();
-  await p.check('input[name="as-milieu"][value="gmfu"]'); await suivant();
+  await pratique(p, "gmfu"); await suivant();
   await p.fill("#as-patientsParDJ", "8"); await suivant(); await suivant(); await suivant();
   await p.check('input[name="as-logement"][value="proprietaire"]'); await suivant(); await suivant(); await suivant();
   await p.waitForTimeout(300);
@@ -578,7 +585,7 @@ async function apercuCoherent(b, base) {
 }
 
 /* 18 b. Assistant depuis un stockage vide : la pratique ne garde rien de la clientèle, du rythme ni des frais de
-   l'exemple ; les semaines en clinique, 52 moins les vacances ; dépenses professionnelles à 0 ; prêt étudiant avec son
+   l'exemple ; les semaines en clinique, 52 moins les vacances ; dépenses professionnelles : le montant inscrit ; prêt étudiant avec son
    taux et son paiement (aucun paiement : intérêts seulement) ; « Vos revenus » n'est pas coché à la simple ouverture. */
 async function assistantVide(b, base) {
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
@@ -589,11 +596,12 @@ async function assistantVide(b, base) {
   await p.waitForSelector("#assistant[open]", { timeout: 5000 });
   const suivant = () => p.click("#as-suivant"), message = () => p.textContent("#as-message");
   await suivant(); await p.check('input[name="as-famille"][value="seul"]'); await suivant(); await suivant();
-  await p.check('input[name="as-milieu"][value="clinique"]'); await suivant();
+  await pratique(p, "clinique"); await suivant();
   await suivant();
   verifier("assistant vide : les patients par demi-journée sont demandés", (await message()).includes("patients que vous voyez par demi-journée"), await message());
   await p.fill("#as-patientsParDJ", "9"); await p.fill("#as-vacances", "7"); await suivant();
   await p.fill("#as-inscrits", "0"); await p.fill("#as-nouveaux", "300"); await p.fill("#as-vulnerables", "25"); await p.fill("#as-fraisPct", "28");
+  await p.fill("#as-depensesPro", "12000");
   await suivant(); await suivant();
   await p.check('input[name="as-logement"][value="locataire"]'); await p.fill("#as-loyer", "1500"); await suivant();
   await p.check("#as-pret"); await p.fill("#as-pretSolde", "40000"); await suivant();
@@ -601,13 +609,14 @@ async function assistantVide(b, base) {
   await p.fill("#as-pretTaux", "6.45"); await suivant();
   const recap = await p.textContent("#as-corps");
   verifier("assistant vide : le récapitulatif montre la semaine et la clientèle", recap.includes("9 patients") && recap.includes("45 semaines en clinique") && recap.includes("300 nouveaux attendus")
-    && recap.includes("25 % vulnérables") && recap.includes("28 % remis à la clinique") && recap.includes("Sans partenaire"), recap);
+    && recap.includes("25 % vulnérables") && recap.includes("28 % remis à la clinique") && recap.includes("Sans partenaire")
+    && recap.includes("1re année") && recap.includes("hors GMF") && recap.replace(/\s/g, " ").includes("dépenses professionnelles de 12 000 $ par année") && !recap.includes("vos dépenses professionnelles (page Impôt)"), recap);
   await suivant(); await p.waitForTimeout(300);
   const x = await p.evaluate(() => { const S = window.Wealthnord.etat(), r = S.revenu, d = S.dettes.find(z => z.creditImpot);
     return { pdj: r.patientsParDJ, guichet: r.nouveauxGuichet, vuln: r.partVulnerable, frais: r.fraisCabinetPct, semaines: r.semaines, transf: r.nouveauxTransferes, sans: r.nouveauxSansMedecin,
       pro: S.impot.depensesPro, exemple: S.meta.exemple, pret: d && { taux: d.taux, paiement: d.paiement, interets: d.interetsSeulement }, gmf: r.membreGmf, gmfConfirme: !!S.confirmes["revenu.membreGmf"] }; });
   verifier("assistant vide : rien de l'exemple dans la pratique", x.pdj === 9 && x.guichet === 300 && x.vuln === 25 && x.frais === 28 && x.semaines === 45 && x.transf === 0 && x.sans === 0
-    && x.pro === 0 && !x.exemple && !x.gmf && x.gmfConfirme, x);
+    && x.pro === 12000 && !x.exemple && !x.gmf && x.gmfConfirme, x);
   verifier("assistant vide : prêt étudiant au taux inscrit, intérêts seulement sans paiement", x.pret && x.pret.taux === 6.45 && x.pret.paiement === 0 && x.pret.interets, x.pret);
   // Ouvrir le panneau Revenu ne coche pas « Vos revenus » ; changer un champ, oui.
   await allerA(p, "revenu"); await p.click("#v-revenu .bouton-modifier"); await p.waitForTimeout(300);
@@ -632,6 +641,7 @@ async function assistantMode(b, base) {
   await p.check('input[name="as-milieu"][value="gmfu"]');
   verifier("assistant : taux horaire coché d'office", await p.isChecked('input[name="as-mode"][value="horaire"]'));
   await p.check('input[name="as-mode"][value="mixte"]');
+  await p.selectOption("#as-anneePratique", "1"); await p.check('input[name="as-lieuGmfu"][value="etablissement"]');
   await suivant(); await p.fill("#as-patientsParDJ", "8"); await suivant(); await suivant(); await suivant();
   await p.check('input[name="as-logement"][value="locataire"]'); await suivant(); await suivant();
   verifier("assistant : le mode dans le récapitulatif", (await p.textContent("#as-corps")).includes("GMF-U · taux mixte"));
@@ -1278,12 +1288,12 @@ async function demarrageRapide(b, base) {
   await p.click("#as-retour");
   const accueil = await p.evaluate(() => document.getElementById("as-titre").textContent);
   await p.click("#as-rapide");
-  await p.check('input[name="as-milieu"][value="gmfu"]'); await p.click("#as-suivant");
+  await pratique(p, "gmfu"); await p.click("#as-suivant");
   const q2 = await p.evaluate(() => ({ etape: document.querySelector("#as-corps .as-etape").textContent, bouton: document.getElementById("as-suivant").textContent }));
   await p.fill("#as-patientsParDJ", "8"); await p.click("#as-suivant"); await p.waitForTimeout(400);
   const fin = await p.evaluate(() => ({ hash: location.hash, modes: !!document.getElementById("rv-r-modes").offsetParent, S: window.Wealthnord.etat(),
     toast: document.getElementById("toast-texte").textContent }));
-  verifier("rapide : deux questions, puis vos trois modes (page Comparer)", q1.etape === "Question 1 sur 2" && q1.titre === "Votre pratique" && q1.retour && accueil === "Bienvenue dans WealthMorand"
+  verifier("rapide : deux questions, puis vos trois modes (page Comparer)", q1.etape === "Question 1 sur 2" && q1.titre === "Votre pratique" && q1.retour && accueil === "Bienvenue dans Wealth Morand"
     && q2.etape === "Question 2 sur 2" && q2.bouton === "Voir mes modes" && fin.hash === "#comparer" && fin.modes && fin.S.revenu.milieu === "gmfu" && fin.S.revenu.patientsParDJ === 8
     && fin.toast.includes("Complétez votre portrait"), { q1, accueil, q2, hash: fin.hash, toast: fin.toast });
   await allerA(p, "apercu");
@@ -1317,10 +1327,10 @@ async function demarrageGmfu(b, base) {
   await p.waitForSelector("#assistant[open]", { timeout: 5000 });
   const intro = await p.textContent("#as-corps .as-intro");
   await p.click("#as-rapide");
-  await p.check('input[name="as-milieu"][value="clsc"]'); await p.click("#as-suivant");
-  const horsGmfu = await p.evaluate(() => !document.getElementById("as-enseignement") && !document.getElementById("as-residents"));
+  await pratique(p, "clsc"); await p.click("#as-suivant");
+  const horsGmfu = await p.evaluate(() => !document.getElementById("as-enseignement") && !document.getElementById("as-residents") && !document.getElementById("as-externes"));
   await p.click("#as-retour");
-  await p.check('input[name="as-milieu"][value="gmfu"]'); await p.click("#as-suivant");
+  await pratique(p, "gmfu"); await p.click("#as-suivant");
   const defauts = await p.evaluate(() => [document.getElementById("as-enseignement").value, document.getElementById("as-residents").value]);
   // Le total au GMF-U d'abord, puis sa répartition ; le bureau en découle. Le champ des patients du SRV apparaît dès qu'on tape.
   const vu = sel => p.evaluate(s => !!document.querySelector(s) && !!document.querySelector(s).closest(".champ, label, div").getClientRects().length && !document.querySelector(s).closest("[hidden]"), sel);
@@ -1369,7 +1379,7 @@ async function assistantEstimations(b, base) {
   const suivant = () => p.click("#as-suivant"), message = () => p.textContent("#as-message");
   // Chemin rapide en clinique, en territoire désigné.
   await p.click("#as-rapide");
-  await p.check('input[name="as-milieu"][value="clinique"]'); await p.check("#as-territoire"); await suivant();
+  await pratique(p, "clinique"); await p.check("#as-territoire"); await suivant();
   const sansMajoration = await message();
   await p.fill("#as-majoration", "15"); await suivant();
   await p.fill("#as-patientsParDJ", "12"); await suivant();
@@ -1381,7 +1391,7 @@ async function assistantEstimations(b, base) {
   // Portrait complet : hospitalisation 4 jours par mois à la place de la clinique (8 demi-journées : 4 jours par semaine).
   await p.evaluate(() => document.getElementById("ap-assistant").click()); await p.waitForSelector("#assistant[open]", { timeout: 5000 });
   await suivant(); await p.check('input[name="as-famille"][value="seul"]'); await suivant(); await suivant();
-  await p.check('input[name="as-milieu"][value="clinique"]'); await suivant();
+  await pratique(p, "clinique"); await suivant();
   await p.fill("#as-patientsParDJ", "12"); await p.fill("#as-vacances", "6"); await suivant();
   await p.fill("#as-inscrits", "1000"); await suivant();
   const sansFraisComplet = await message();
@@ -1403,6 +1413,71 @@ async function assistantEstimations(b, base) {
     x.semaines === 34 && calcul.replace(/\s/g, " ").includes("Semaines en clinique : 34") && recap.includes("34 semaines en clinique") && recap.includes("à la place de la clinique"), { calcul, semaines: x.semaines });
   verifier("estimations : hors territoire désigné, aucune majoration", x.maj === 0, x);
   verifier("estimations : aucune erreur", erreurs.length === 0, erreurs);
+  await ctx.close();
+}
+
+/* 35 d. Assistant, précisions : l'année de pratique se choisit (rien n'est coché d'avance) ; hors première année, les
+   nouveaux patients ne sont pas demandés ; hors GMF-U, « membre d'un GMF » exige un oui ou un non ; au chemin rapide
+   d'une première année, les nouveaux patients et les vulnérables se saisissent ; en GMF-U, le lieu (clinique privée :
+   tarifs du cabinet et frais de cabinet) et les externes ; les dépenses professionnelles approximatives sont gardées. */
+async function assistantPrecisions(b, base) {
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
+  const p = await ctx.newPage(), erreurs = [];
+  p.on("pageerror", e => erreurs.push(String(e)));
+  await ctx.addInitScript(() => { try { sessionStorage.setItem("wm.ouverture", "1"); } catch (e) { /* stockage indisponible */ } });
+  await p.goto(`${base}/index.html`); await pret(p);
+  await p.waitForSelector("#assistant[open]", { timeout: 5000 });
+  const suivant = () => p.click("#as-suivant"), message = () => p.textContent("#as-message");
+  const present = id => p.evaluate(x => { const e = document.getElementById(x); return !!e && !e.closest("[hidden]"); }, id);
+  // Chemin rapide, en clinique.
+  await p.click("#as-rapide");
+  const anneeVide = await p.inputValue("#as-anneePratique"), caseAncienne = await present("as-premiere");
+  await p.check('input[name="as-milieu"][value="clinique"]'); await suivant();
+  const sansAnnee = await message();
+  await p.selectOption("#as-anneePratique", "3");
+  const gmfCoche = await p.evaluate(() => [...document.querySelectorAll('input[name="as-gmf"]')].some(x => x.checked));
+  await suivant(); const sansGmf = await message();
+  await p.check('input[name="as-gmf"][value="oui"]'); await suivant();
+  const an3 = { nouveaux: await present("as-nouveaux"), vulnerables: await present("as-vulnerables"), caseAncienne: await present("as-premiere") };
+  await p.click("#as-retour"); await p.selectOption("#as-anneePratique", "1"); await suivant();
+  const an1 = { nouveaux: await present("as-nouveaux"), vulnerables: await present("as-vulnerables") };
+  await p.fill("#as-patientsParDJ", "12"); await p.fill("#as-nouveaux", "400"); await p.fill("#as-vulnerables", "20"); await p.fill("#as-fraisPct", "30");
+  await suivant(); await p.waitForTimeout(400);
+  const rapide = await p.evaluate(() => { const r = window.Wealthnord.etat().revenu; return { annee: r.annee, apres: r.anneePratique, guichet: r.nouveauxGuichet, vuln: r.partVulnerable, gmf: r.membreGmf, lieu: r.lieuTarifs }; });
+  verifier("précisions : l'année de pratique n'est pas choisie d'avance et elle est exigée ; plus de case « première année »",
+    anneeVide === "" && !caseAncienne && !an3.caseAncienne && sansAnnee.includes("année de pratique"), { anneeVide, sansAnnee });
+  verifier("précisions : hors GMF-U, « membre d'un GMF » exige un oui ou un non, sans réponse d'avance", !gmfCoche && sansGmf.includes("membre d'un GMF") && rapide.gmf === true, { gmfCoche, sansGmf, rapide });
+  verifier("précisions : chemin rapide, les nouveaux patients ne se demandent qu'en première année ; les vulnérables, toujours",
+    !an3.nouveaux && an3.vulnerables && an1.nouveaux && an1.vulnerables, { an3, an1 });
+  verifier("précisions : chemin rapide d'une première année, 400 nouveaux patients et 20 % de vulnérables gardés ; l'année suivante sera la 2e",
+    rapide.annee === "premiere" && rapide.guichet === 400 && rapide.vuln === 20 && rapide.apres === "2" && rapide.lieu === "auto", rapide);
+  // Portrait complet : GMF-U dans une clinique privée, 3e année, 1 externe.
+  await p.evaluate(() => document.getElementById("ap-assistant").click()); await p.waitForSelector("#assistant[open]", { timeout: 5000 });
+  await suivant(); await p.check('input[name="as-famille"][value="seul"]'); await suivant(); await suivant();
+  await p.selectOption("#as-anneePratique", "3"); await p.check('input[name="as-milieu"][value="gmfu"]');
+  const gmfEnGmfu = await p.evaluate(() => !!document.querySelector('input[name="as-gmf"]'));
+  await suivant(); const sansLieu = await message();
+  await p.check('input[name="as-lieuGmfu"][value="cabinet"]'); await suivant();
+  await p.fill("#as-patientsParDJ", "8"); await p.fill("#as-externes", "1"); await suivant();
+  const clientele = { nouveaux: await present("as-nouveaux"), frais: await present("as-fraisPct"), gmf: await present("as-membreGmf") };
+  await p.fill("#as-inscrits", "600"); await suivant(); const sansFrais = await message();
+  await p.fill("#as-fraisPct", "20"); await p.fill("#as-depensesPro", "9000"); await suivant(); await suivant();
+  await p.check('input[name="as-logement"][value="locataire"]'); await suivant(); await suivant();
+  const recap = (await p.textContent("#as-corps")).replace(/\s/g, " ");
+  await suivant(); await p.waitForTimeout(400);
+  const x = await p.evaluate(() => { const S = window.Wealthnord.etat(), r = S.revenu, T = window.Calc.TARIFS_LIEU;
+    return { annee: r.annee, an: r.anneePratique, lieu: r.lieuTarifs, suivi: r.tarifs.suivi[0], cabinet: T.cabinet.suivi[0], etab: T.etablissement.suivi[0], externes: r.externes, residents: r.residents,
+      frais: r.fraisCabinetPct, gmf: r.membreGmf, guichet: r.nouveauxGuichet, pro: S.impot.depensesPro }; });
+  verifier("précisions : en GMF-U, le lieu est exigé ; « membre d'un GMF » n'est pas demandé (un GMF-U est un GMF)", sansLieu.includes("où se trouve votre GMF-U") && !gmfEnGmfu && !clientele.gmf && x.gmf === true, { sansLieu, gmfEnGmfu, x });
+  verifier("précisions : GMF-U dans une clinique privée, les tarifs du cabinet et la part remise à la clinique (exigée, puis gardée)",
+    x.lieu === "cabinet" && x.suivi === x.cabinet && x.cabinet !== x.etab && clientele.frais && sansFrais.includes("remise à la clinique") && x.frais === 20, { x, sansFrais });
+  verifier("précisions : 3e année, année type sans nouveaux patients de première année", x.annee === "type" && x.an === "3" && !clientele.nouveaux && x.guichet === 0, x);
+  verifier("précisions : 1 externe et 1 résident supervisés, gardés", x.externes === 1 && x.residents === 1, x);
+  verifier("précisions : dépenses professionnelles approximatives gardées (9 000 $)", x.pro === 9000, x);
+  verifier("précisions : le récapitulatif reprend l'année, le lieu, l'externe, le GMF et les dépenses professionnelles",
+    recap.includes("3e année") && recap.includes("en clinique privée (tarifs du cabinet)") && recap.includes("(1 résident, 1 externe)") && recap.includes("membre d'un GMF")
+    && recap.includes("20 % remis à la clinique") && recap.includes("dépenses professionnelles de 9 000 $ par année"), recap);
+  verifier("précisions : aucune erreur", erreurs.length === 0, erreurs);
   await ctx.close();
 }
 
@@ -1753,61 +1828,26 @@ async function supervisionPlan(b, base) {
   await ctx.close();
 }
 
-/* 41. Répertoire des actes (onglet Actes) : les plus fréquents au départ, puis tous ; la recherche par mot sans accents et par code, les filtres
-   par groupe ; la saisie garde le focus ; rien ne déborde à 320 px. */
+/* 41. Panneau Revenu en GMF-U : l'essentiel ne montre ni les catégories de vulnérabilité ni les frais de cabinet. Le répertoire
+   des actes, les codes de vulnérabilité et la CNESST sont dans Codes Morand (/codes/, testés dans le dépôt du site) ;
+   l'en-tête y mène, et une ancienne adresse #codes aussi. */
 async function repertoireActes(b, base) {
-  const { ctx, p, erreurs } = await ouvrir(b, base, { page: "codes", largeur: 320 });
+  const { ctx, p, erreurs } = await ouvrir(b, base, { page: "revenu", largeur: 320 });
   await remplacer(p, { "revenu.milieu": "gmfu", "revenu.modeBudget": "mixte", "revenu.enseignement": 2, "revenu.residents": 1 });
-  await allerA(p, "codes");
-  const etat = () => p.evaluate(() => ({ compte: document.getElementById("rep-compte").textContent, titres: [...document.querySelectorAll("#rep-liste .rangee-titre")].map(x => x.textContent),
-    valeurs: [...document.querySelectorAll("#rep-liste .rangee-droite")].map(x => x.textContent), focus: document.activeElement.id,
-    debord: document.documentElement.scrollWidth > document.documentElement.clientWidth }));
-  const total = await p.evaluate(() => window.Repertoire.ACTES.length + window.Calc.CNESST.length);
-  const freq = await etat();
-  verifier("répertoire : au départ, les 10 actes les plus fréquents, puis « Voir les N actes »", freq.compte === "10 actes" && freq.titres.length === 10
-    && freq.titres[0].startsWith("Forfait horaire") && (await p.textContent("#rep-voir-tous")).replace(/\s/g, " ") === `Voir les ${total} actes`, freq);
-  // Une recherche qui ne trouve rien dans le groupe choisi montre les autres groupes, et le dit.
-  await p.click('#rep-groupes button[data-v="formulaires"]'); await p.fill("#rep-q", "19914"); await p.waitForTimeout(150);
-  const ailleurs = await p.evaluate(() => ({ note: (document.getElementById("rep-ailleurs") || {}).textContent || "", titres: [...document.querySelectorAll("#rep-liste .rangee-titre")].map(x => x.textContent) }));
-  verifier("répertoire : 19914 cherché dans « Formulaires » mène au demi-per diem, avec une note", ailleurs.note.includes("autres groupes") && ailleurs.titres.some(t => t.startsWith("Demi-per diem")), ailleurs);
-  await p.fill("#rep-q", ""); await p.click('#rep-groupes button[data-v="frequents"]'); await p.waitForTimeout(150);
-  // En GMF-U, l'essentiel du panneau Revenu ne montre ni les catégories de vulnérabilité ni les frais de cabinet.
-  await p.click("#v-codes .bouton-modifier"); await p.waitForTimeout(250);
+  await allerA(p, "revenu");
+  await p.click("#v-revenu .bouton-modifier"); await p.waitForTimeout(250);
   const champs = await p.evaluate(() => ["revenu-partGroupe2", "revenu-partGroupe34", "revenu-partTresVulnerable", "revenu-fraisCabinetPct"]
     .map(id => { const x = document.getElementById("c-" + id); return x ? !!x.offsetParent : null; }));
   verifier("GMF-U : catégories de vulnérabilité et frais de cabinet dans le détail, pas dans l'essentiel", champs.every(v => v === false), champs);
   await p.keyboard.press("Escape"); await p.waitForTimeout(200);
-  await p.click("#rep-voir-tous");
-  const tous = await etat();
-  verifier("répertoire : tous les actes, groupés, rien ne déborde à 320 px", tous.compte === `${total} actes` && tous.titres.length === total && tous.titres[0].startsWith("Forfait horaire") && !tous.debord, { compte: tous.compte, n: tous.titres.length, premier: tous.titres[0], debord: tous.debord });
-  await p.fill("#rep-q", "STERILET");
-  const st = await etat();
-  verifier("répertoire : « STERILET » trouve les 3 actes du stérilet, sans accents ni majuscules ; le focus reste dans le champ",
-    st.compte === "3 actes" && st.titres.every(t => t.includes("stérilet")) && st.focus === "rep-q", st);
-  await p.fill("#rep-q", "15804");
-  const code = await etat();
-  verifier("répertoire : un code trouve son acte, avec le tarif et la part au mixte", code.compte === "1 acte" && code.titres[0].startsWith("Suivi, patient non vulnérable")
-    && code.valeurs[0].replace(/\s/g, " ").includes("32,25 / 36,95 $") && code.valeurs[0].replace(/\s/g, " ").includes("au mixte 20,50 / 23,49 $"), code);
-  await p.fill("#rep-q", "08875");
-  const gmf = await etat();
-  verifier("répertoire : le forfait GMF (08875) : 9,35 $, payé à 100 %", gmf.compte === "1 acte" && gmf.titres[0].startsWith("Forfait de prise en charge et de suivi de la clientèle en GMF")
-    && gmf.valeurs[0].replace(/\s/g, " ").includes("9,35 $") && gmf.valeurs[0].includes("payé à 100 %"), gmf);
-  await p.fill("#rep-q", "");
-  await p.click('#rep-groupes button[data-v="formulaires"]');
-  const form = await etat(), premierCnesst = form.titres.findIndex(t => t.startsWith("CNESST"));
-  verifier("répertoire : « Formulaires et suppléments » commence par le forfait GMF et les suppléments ; les 42 formulaires de la CNESST à la fin",
-    form.titres[0].startsWith("Forfait de prise en charge et de suivi") && form.titres.slice(1, 5).every(t => t.startsWith("Patient sans médecin de famille"))
-    && premierCnesst > 0 && form.titres.slice(premierCnesst).length === 42 && form.titres.slice(premierCnesst).every(t => t.startsWith("CNESST")), form.titres.slice(0, 6));
-  await p.click('#rep-groupes button[data-v="non"]');
-  const non = await etat();
-  verifier("répertoire : le filtre « Non facturables à part » : la cryothérapie simple, compris dans la visite", non.titres.some(t => t.startsWith("Cryothérapie d'une lésion"))
-    && non.valeurs.every(v => v.includes("Compris")), non.titres);
-  await p.click('#rep-groupes button[data-v="frequents"]'); await p.fill("#rep-q", "cryochirurgie");
-  const cryo = await etat();
-  verifier("répertoire : depuis « Les plus fréquents », la recherche porte sur tous les actes", cryo.titres.length === 6 && cryo.titres.every(t => t.startsWith("Cryochirurgie")), cryo.titres);
-  await p.click('#rep-groupes button[data-v="tous"]'); await p.fill("#rep-q", "zzzz");
-  verifier("répertoire : aucune correspondance, un message", (await p.evaluate(() => document.getElementById("rep-liste").textContent)).includes("Aucun acte ne correspond"));
-  verifier("répertoire : aucune erreur", erreurs.length === 0, erreurs);
+  const nav = await p.evaluate(() => ({ outils: [...document.querySelectorAll(".bandeau-morand .bm-outils a")].map(a => `${a.textContent}:${a.getAttribute("href")}`),
+    page: !!document.getElementById("v-codes"), script: !!window.Repertoire, uneLigne: (() => { const a = [...document.querySelectorAll(".bandeau-morand .bm-outils a")].map(x => x.getBoundingClientRect()); return Math.abs(a[0].top - a[a.length - 1].top) < 2 && a[a.length - 1].right <= innerWidth + 1; })() }));
+  verifier("codes : sortis de Wealth ; l'en-tête mène à Codes Morand, cinq outils sur une ligne à 320 px",
+    nav.outils.join() === "Wealth:/wealth/,Guide:/guides/,Map:/map/,CRDS:/crds/,Codes:/codes/" && !nav.page && !nav.script && nav.uneLigne, nav);
+  verifier("panneau Revenu en GMF-U : aucune erreur", erreurs.length === 0, erreurs);
+  await p.evaluate(() => { location.hash = "#codes"; });
+  await p.waitForURL(u => u.pathname === "/codes/", { timeout: 5000 }).catch(() => {});
+  verifier("codes : une ancienne adresse #codes mène à Codes Morand (/codes/)", new URL(p.url()).pathname === "/codes/", p.url());
   await ctx.close();
 }
 
@@ -1817,17 +1857,17 @@ async function repertoireActes(b, base) {
 async function revenuEtImpot(b, base) {
   const { ctx, p, erreurs } = await ouvrir(b, base, { page: "revenu" });
   const etat = () => p.evaluate(() => ({ hash: location.hash, nav: [...document.querySelectorAll(".nav > a[data-onglet]")].map(a => a.dataset.onglet),
-    noms: [...document.querySelectorAll(".nav > a[data-onglet]")].slice(0, 5).map(a => a.textContent.trim()),
+    noms: [...document.querySelectorAll(".nav > a[data-onglet]")].slice(0, 4).map(a => a.textContent.trim()),
     marque: (document.querySelector('.nav [aria-current="page"]') || {}).dataset?.onglet,
     section: [...document.querySelectorAll(".vue:not([hidden]) .onglets-section a")].map(a => `${a.textContent}${a.getAttribute("aria-current") === "page" ? "*" : ""}`) }));
   const rv = await etat();
-  verifier("barre du bas : Revenu, Comparer, Codes, Loi 2, Finances", rv.nav.join() === "revenu,comparer,codes,loi2,budget,donnees"
-    && rv.noms.join() === "Revenu,Comparer,Codes,Loi 2,Finances", rv);
+  verifier("barre du bas : Revenu, Comparer, Loi 2, Finances", rv.nav.join() === "revenu,comparer,loi2,budget,donnees"
+    && rv.noms.join() === "Revenu,Comparer,Loi 2,Finances", rv);
   verifier("revenu : plus d'onglet Impôt en haut ; Revenu marqué", rv.section.length === 0 && rv.marque === "revenu", rv);
   const roues = await p.evaluate(() => [...document.querySelectorAll(".tete-page .bouton-modifier[data-feuille]")].map(b => ({ roue: b.classList.contains("bouton-reglages"),
     nom: b.getAttribute("aria-label") || "", texte: b.textContent.trim(), taille: Math.round(b.getBoundingClientRect().width) || null })));
-  verifier("en-têtes : une roue dentée « Personnaliser vos données », la même dans les 7 pages, sans texte visible",
-    roues.length === 7 && roues.every(r => r.roue && r.nom.startsWith("Personnaliser vos données") && r.texte === "Personnaliser"), roues);
+  verifier("en-têtes : une roue dentée « Personnaliser vos données », la même dans les 6 pages, sans texte visible",
+    roues.length === 6 && roues.every(r => r.roue && r.nom.startsWith("Personnaliser vos données") && r.texte === "Personnaliser"), roues);
   await allerA(p, "budget");
   const bu = await etat();
   verifier("finances : « Budget · Patrimoine · Impôt » en haut du budget ; Finances marqué", bu.section.join() === "Budget*,Patrimoine,Impôt" && bu.marque === "budget", bu);
@@ -1845,7 +1885,7 @@ async function revenuEtImpot(b, base) {
   verifier("comparer : marqué dans la barre du bas", (await etat()).marque === "comparer");
   await p.setViewportSize({ width: 320, height: 700 });
   const debords = [];
-  for (const pg of ["revenu", "revenu/detail", "impot", "comparer", "comparer/modes", "comparer/demijournee", "comparer/actes", "comparer/offres", "codes", "loi2/estimateur", "loi2/regles", "loi2/documents", "budget", "avenir"]) {
+  for (const pg of ["revenu", "revenu/detail", "impot", "comparer", "comparer/modes", "comparer/demijournee", "comparer/actes", "comparer/offres", "loi2/estimateur", "loi2/regles", "loi2/documents", "budget", "avenir"]) {
     await allerA(p, pg);
     if (await p.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)) debords.push(pg);
   }
@@ -1911,34 +1951,12 @@ async function ciblesTactiles(b, base) {
   await ctx2.close(); await ctx.close();
 }
 
-// Codes de vulnérabilité (page Codes) : les 20 catégories, la recherche par mot sans accents, la source et le code fermé.
-async function codesVulnerabilite(b, base) {
-  const { ctx, p, erreurs } = await ouvrir(b, base, { page: "codes", largeur: 320 });
-  await p.click("#rv-carte-vuln summary"); await p.waitForTimeout(100);
-  const etat = () => p.evaluate(() => ({ codes: [...document.querySelectorAll("#rv-vuln td.vu-code")].map(x => x.textContent), resume: document.getElementById("rv-vuln-resume").textContent,
-    vide: !document.getElementById("vu-vide").hidden, note: document.getElementById("rv-vuln-note").textContent, ferme: [...document.querySelectorAll("#rv-vuln tr.vu-ferme td.vu-code")].map(x => x.textContent),
-    debord: document.documentElement.scrollWidth > document.documentElement.clientWidth }));
-  const tout = await etat();
-  verifier("vulnérabilité : 20 codes de 01 à 20, le 14 fermé", tout.codes.length === 20 && tout.codes[0] === "01" && tout.codes[19] === "20" && tout.ferme.join() === "14" && /19 catégories/.test(tout.resume), tout);
-  verifier("vulnérabilité : source et limite indiquées", /FMOQ \(2017\)/.test(tout.note) && /infolettre 171/.test(tout.note) && /source manquante/.test(tout.note), tout.note);
-  await p.fill("#vu-q", "diabete"); await p.waitForTimeout(80);
-  const d = await etat();
-  verifier("vulnérabilité : « diabete » sans accent trouve le code 05", d.codes.join() === "05", d.codes);
-  await p.fill("#vu-q", "FA"); await p.waitForTimeout(80);
-  const fa = await etat();
-  verifier("vulnérabilité : « FA » trouve seulement les codes 13 et 14", fa.codes.join() === "13,14", fa.codes);
-  await p.fill("#vu-q", "zzz"); await p.waitForTimeout(80);
-  const z = await etat();
-  verifier("vulnérabilité : aucun résultat, message affiché, pas de défilement horizontal à 320 px", z.codes.length === 0 && z.vide && !z.debord, z);
-  verifier("vulnérabilité : aucune erreur", erreurs.length === 0, erreurs);
-  await ctx.close();
-}
 
 (async () => {
   const srv = await serveur(), base = `http://127.0.0.1:${srv.address().port}${PREFIXE}`;
   const b = await chromium.launch();
   try {
-    for (const scenario of [exemple, brochure, alertes, sauvegarde, robustesse, injection, rapport, nouvelleVersion, budget, logo, sousOnglets, repartition, verrou, verrouDelai, verrouOnglets, sommaireComptable, monteCarlo, apercuCoherent, assistantVide, assistantMode, rendementProfil, lexiqueRamq, fraisGardeMenage, acomptesCeliapp, finitions, enteteEtChamps, transfert, residence, resumeDetail, tempsQuiPasse, planCalendrier, comparerActes, outilsAvances, etSi, deuxOffres, demarrageRapide, demarrageGmfu, assistantEstimations, importSur, saisieSolide, accessibiliteLot8, prochainPaiement, superviseurAB, supervisionPlan, reerDroits, premiereAnneeApres, hypotheseProjection, loi2, repertoireActes, codesVulnerabilite, revenuEtImpot, ciblesTactiles]) {
+    for (const scenario of [exemple, brochure, alertes, sauvegarde, robustesse, injection, rapport, nouvelleVersion, budget, logo, sousOnglets, repartition, verrou, verrouDelai, verrouOnglets, sommaireComptable, monteCarlo, apercuCoherent, assistantVide, assistantMode, rendementProfil, lexiqueRamq, fraisGardeMenage, acomptesCeliapp, finitions, enteteEtChamps, transfert, residence, resumeDetail, tempsQuiPasse, planCalendrier, comparerActes, outilsAvances, etSi, deuxOffres, demarrageRapide, demarrageGmfu, assistantEstimations, assistantPrecisions, importSur, saisieSolide, accessibiliteLot8, prochainPaiement, superviseurAB, supervisionPlan, reerDroits, premiereAnneeApres, hypotheseProjection, loi2, repertoireActes, revenuEtImpot, ciblesTactiles]) {
       if (process.env.SCENARIOS && !process.env.SCENARIOS.split(",").includes(scenario.name)) continue;
       try { await scenario(b, base); } catch (e) { verifier(`${scenario.name} : déroulement`, false, String(e).split("\n")[0]); }
     }

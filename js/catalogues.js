@@ -1,4 +1,4 @@
-/* WealthMorand — valeurs de départ et catalogues : l'exemple affiché au premier lancement,
+/* Wealth Morand — valeurs de départ et catalogues : l'exemple affiché au premier lancement,
    les catalogues (dépenses, autres revenus, dépenses professionnelles), les milieux et les
    activités, les champs des panneaux « Modifier » et les cas de vérification de l'impôt.
    Rien ici ne lit ni n'écrit les données de l'utilisateur : app.js s'en charge. */
@@ -291,7 +291,7 @@
 
   /* Résultats de l'outil de calcul du revenu disponible du ministère des Finances du
      Québec (version de mai 2026, revenus d'emploi), relevés le 25 octobre 2026.
-     WealthMorand recalcule les mêmes cas à chaque ouverture pour mesurer l'écart. */
+     Wealth Morand recalcule les mêmes cas à chaque ouverture pour mesurer l'écart. */
   const VERIFICATION = [{"couple": true, "salaires": [190000, 60000], "ages": [4, 3], "officiel": {"qc": 40789, "fed": 34389, "rrq": 8455, "rqap": 701, "ae": 1676, "af": 2442, "fournitures": 127, "ace": 860, "prime": 1532}}, {"couple": true, "salaires": [100000, 0], "ages": [4, 3], "officiel": {"qc": 10487, "fed": 9131, "rrq": 4895, "rqap": 430, "ae": 896, "af": 4655, "fournitures": 127, "ace": 9378, "prime": 1532}}, {"couple": false, "salaires": [190000], "ages": [], "officiel": {"qc": 35143, "fed": 29962, "rrq": 4895, "rqap": 443, "ae": 896, "af": 0, "fournitures": 0, "ace": 0, "prime": 766}}, {"couple": true, "salaires": [80000, 40000], "ages": [4, 3], "officiel": {"qc": 12070, "fed": 9862, "rrq": 6995, "rqap": 516, "ae": 1416, "af": 3920, "fournitures": 127, "ace": 8248, "prime": 1532}}, {"couple": true, "salaires": [250000, 0], "ages": [4, 3], "officiel": {"qc": 47939, "fed": 42881, "rrq": 4895, "rqap": 443, "ae": 896, "af": 2442, "fournitures": 127, "ace": 828, "prime": 1532}}, {"couple": true, "salaires": [190000, 15000], "ages": [4, 3], "officiel": {"qc": 34447, "fed": 29797, "rrq": 5620, "rqap": 507, "ae": 1091, "af": 2442, "fournitures": 127, "ace": 3400, "prime": 1532}}, {"couple": false, "salaires": [60000], "ages": [], "officiel": {"qc": 5647, "fed": 4427, "rrq": 3560, "rqap": 258, "ae": 780, "af": 0, "fournitures": 0, "ace": 0, "prime": 766}}, {"couple": true, "salaires": [140000, 90000], "ages": [7, 3], "officiel": {"qc": 33507, "fed": 28249, "rrq": 9791, "rqap": 830, "ae": 1791, "af": 2442, "fournitures": 127, "ace": 758, "prime": 1532}}];
 
   /* Pratique principale, toujours au calcul détaillé (tarifs de l'onglet B de la RAMQ) :

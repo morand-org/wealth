@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "WealthMorand",
-  "short_name": "WealthMorand",
+  "name": "Wealth Morand",
+  "short_name": "Wealth",
   "description": "Revenu, impôt, dettes et avenir du ménage, calculés sur cet appareil.",
   "lang": "fr-CA",
   "dir": "ltr",

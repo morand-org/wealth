@@ -1,4 +1,4 @@
-/* WealthMorand : avant l'affichage, le thème choisi, les outils avancés affichés ou non
+/* Wealth Morand : avant l'affichage, le thème choisi, les outils avancés affichés ou non
    et, si les données sont chiffrées, l'écran du verrou à la place de l'app.
    Fichier à part : la politique de sécurité du contenu n'autorise aucun script dans la page. */
 try { const t = localStorage.getItem("wealthnord.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) { /* stockage indisponible */ }

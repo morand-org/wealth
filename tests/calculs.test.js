@@ -1,4 +1,4 @@
-/* Tests des calculs de WealthMorand, sans dépendance : node tests/calculs.test.js
+/* Tests des calculs de Wealth Morand, sans dépendance : node tests/calculs.test.js
    Vérifie l'impôt contre l'outil officiel du ministère des Finances du Québec,
    les formules hypothécaires canadiennes, la simulation des dettes et la
    projection de la valeur nette. Aucune donnée personnelle : cas fictifs. */
@@ -664,7 +664,7 @@ verifier("transition incorporée : une seule déclaration paie davantage, et gar
   verifier("Loi 2 : sans hypothèse, rien de la première ligne n'est compté", C.revenuCompose(g, {}).premiereLigne === 0);
 }
 
-/* Service worker : à l'activation, il ne supprime que les anciens caches de WealthMorand ; ceux des autres sections
+/* Service worker : à l'activation, il ne supprime que les anciens caches de Wealth Morand ; ceux des autres sections
    d'une même adresse (accueil, guides, carte) restent. Exécuté avec un faux navigateur. */
 (async () => {
   const ecouteurs = {}, restants = new Set(["wealthmorand-v1", "guides-v3", "accueil-v1", "carte-v2"]);
@@ -675,7 +675,7 @@ verifier("transition incorporée : une seule déclaration paie davantage, et gar
   vm.runInNewContext(code, faux);
   const cache = /const CACHE = "([^"]+)"/.exec(code)[1]; restants.add(cache);
   let attente; ecouteurs.activate({ waitUntil: p => { attente = p; } }); await attente;
-  verifier("service worker : seuls les anciens caches de WealthMorand sont supprimés", [...restants].sort().join() === ["accueil-v1", "carte-v2", "guides-v3", cache].sort().join(), [...restants]);
+  verifier("service worker : seuls les anciens caches de Wealth Morand sont supprimés", [...restants].sort().join() === ["accueil-v1", "carte-v2", "guides-v3", cache].sort().join(), [...restants]);
   console.log(`${reussis} vérifications réussies, ${echecs} échec(s). Écart maximal avec l'outil officiel : ${maxEcart} $.`);
   process.exit(echecs ? 1 : 0);
 })();

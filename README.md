@@ -1,4 +1,4 @@
-# WealthMorand
+# Wealth Morand
 
 Votre boussole financière.
 
@@ -69,8 +69,9 @@ chacune, alignées et de même hauteur sur ordinateur.
   par. 2.05 ; en GMF-U, codes 42094 et 42095) ; à l'acte, aucun tarif
   trouvé, rien n'est compté. Le mode composé ne les compte pas (banque
   d'heures administratives, montants à préciser).
-- **Codes** : le répertoire des actes, avec recherche par code ou par mot,
-  les codes de vulnérabilité (20 catégories, libellés du guide de la FMOQ de 2017, avec la limite de cette source) et les formulaires de la CNESST.
+- **Codes** : le répertoire des actes, les codes de vulnérabilité et les formulaires de la CNESST ont leur propre
+  outil, Codes Morand (www.morand.org/codes/), que le bandeau du haut ouvre. `js/repertoire.js` et `js/catalogues.js`
+  en restent la source.
 - **Loi 2** : l'estimateur du mode composé, ce qui change (les règles
   connues, en bref) et les documents (pages de la FMOQ et du gouvernement).
 - **Finances** : le budget, le patrimoine et l'impôt, avec « Budget ·
@@ -161,8 +162,14 @@ activité en établissement, il demande le nombre de jours (ou de quarts) par
 mois, le revenu brut par jour (la valeur proposée est indicative, sans source
 officielle) et si ces jours remplacent la clinique : si oui, ils sont retirés
 des semaines en clinique, selon vos jours en clinique par semaine. Rien de la
-clientèle ni des frais de l'exemple n'est gardé ; les dépenses
-professionnelles partent de 0. L'exemple fictif reste offert. La carte **Votre
+clientèle ni des frais de l'exemple n'est gardé. L'assistant ne suppose
+rien de ce qui change l'estimation : l'année de pratique se choisit dans une
+liste (1re à 5e ou plus ; les nouveaux patients ne sont demandés qu'en
+première année) ; hors GMF-U, « membre d'un GMF » exige un oui ou un non ; en
+GMF-U, il demande où se trouve le GMF-U (dans une clinique privée : tarifs du
+cabinet, et la part remise à la clinique) et le nombre d'externes supervisés ;
+un total approximatif des dépenses professionnelles est facultatif (0 sinon).
+L'exemple fictif reste offert. La carte **Votre
 portrait** de l'aperçu montre ce qui est rempli et propose la suite. Des conjoints de
 fait ne forment un couple pour l'impôt qu'après 12 mois de vie commune ou
 avec un enfant commun : avant, chacun est imposé seul.
@@ -204,8 +211,7 @@ l'onglet s'appelle « Rythme » et garde le revenu selon les demi-journées).
 des apprenants, par demi-journée et par année, avec le nombre de visites à
 partir duquel les visites rapportent plus, et un bouton qui applique le
 meilleur choix au plan ; votre demi-journée type (au départ, la moyenne du
-plan) au taux horaire, au mixte et à l'acte. **Actes** : le répertoire ;
-repliés, ce que rapporte chaque acte à l'acte et au mixte, et à l'heure
+plan) au taux horaire, au mixte et à l'acte. **Actes** : ce que rapporte chaque acte à l'acte et au mixte, et à l'heure
 selon la durée que vous choisissez (cabinet ou établissement, moins de 500
 ou 500 inscrits et plus), et les formulaires de la CNESST et de l'IVAC
 (annexe XIII : les 42 codes de l'annexe II à l'annexe XXIII), payés à 100 % dans tous les modes. **Offres** : deux offres
@@ -226,7 +232,7 @@ côte à côte (ci-dessus). Les anciennes adresses `#revenu/actes` et
   demi-per diem diffère (41,45 $ et 49,85 $ en établissement), selon le
   lieu et la région ; au mixte, intervention de
   supervision ou visites des apprenants ; à l'acte, visites des
-  apprenants. « Répertoire des actes » (Comparer, onglet Actes) : les actes d'un médecin
+  apprenants. « Répertoire des actes » (dans Codes Morand, www.morand.org/codes/, construit à partir de `js/repertoire.js`) : les actes d'un médecin
   en GMF-U au mixte, avec le tarif de la RAMQ et la part reçue au mixte, une recherche par
   code ou par mot et des filtres par groupe. Il couvre les suppléments payés à 100 % au mixte (annexe II à
   l'annexe XXIII, Brochure no 1) : forfait GMF (08875), suppléments à la prise en charge d'un patient sans médecin
