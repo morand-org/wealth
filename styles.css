@@ -836,7 +836,6 @@ a.tuile:hover { border-color: var(--trait); }
   .hero-valeur { font-size: 4rem; }
   .hero-etiquette, .hero-sous { font-size: 1rem; }
   .nav a { font-size: 1rem; }
-  .carte p, .carte .aide, .a-faire li { max-width: 48em; }
 }
 @media (min-width: 1100px) {
   .vue { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
@@ -845,8 +844,7 @@ a.tuile:hover { border-color: var(--trait); }
   .vue[hidden] { display: none; }
 }
 @media print { .vue > .carte.demi { grid-column: 1 / -1; } }
-/* Grand écran : des lignes d'environ 75 caractères (0,5 em en moyenne par caractère en Inter). */
-@media (min-width: 960px) { .carte p, .carte .aide, .a-faire li { max-width: 38em; } }
+/* Le texte des cartes prend toute leur largeur (pas de colonne étroite à côté d'un grand vide). */
 
 /* ============================================================
    RAPPORT PDF : construit à la demande, visible seulement à l'impression

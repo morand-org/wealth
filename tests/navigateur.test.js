@@ -1481,6 +1481,20 @@ async function assistantPrecisions(b, base) {
   await ctx.close();
 }
 
+/* 35 e. Grand écran : le texte des cartes prend toute leur largeur (pas de colonne étroite à côté d'un grand vide). */
+async function texteLargeur(b, base) {
+  const { ctx, p, erreurs } = await ouvrir(b, base, { largeur: 1874, page: "comparer/demijournee" });
+  await p.setViewportSize({ width: 1874, height: 950 }); await p.waitForTimeout(300);
+  const etroits = await p.evaluate(() => [...document.querySelectorAll(".vue:not([hidden]) .carte :is(p, .aide, .conclusion)")].filter(e => {
+    if (!e.offsetParent || e.textContent.trim().length < 110) return false;
+    const c = e.closest(".carte"), cs = getComputedStyle(c), cw = c.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    return e.getBoundingClientRect().width < cw * 0.9;
+  }).map(e => e.textContent.trim().slice(0, 60)));
+  verifier("grand écran : le texte des cartes prend toute leur largeur (Comparer, demi-journée)", etroits.length === 0, etroits);
+  verifier("grand écran : aucune erreur", erreurs.length === 0, erreurs);
+  await ctx.close();
+}
+
 /* 36. Import sûr : un âge d'enfant hors borne ne bloque plus l'app ; une clé « __proto__ » est ignorée ; un fichier
    qui n'est pas une sauvegarde ne change rien ; un nom de dette en forme de formule est neutralisé dans le CSV. */
 async function importSur(b, base) {
@@ -1958,7 +1972,7 @@ async function ciblesTactiles(b, base) {
   const srv = await serveur(), base = `http://127.0.0.1:${srv.address().port}${PREFIXE}`;
   const b = await chromium.launch();
   try {
-    for (const scenario of [exemple, brochure, alertes, sauvegarde, robustesse, injection, rapport, nouvelleVersion, budget, logo, sousOnglets, repartition, verrou, verrouDelai, verrouOnglets, sommaireComptable, monteCarlo, apercuCoherent, assistantVide, assistantMode, rendementProfil, lexiqueRamq, fraisGardeMenage, acomptesCeliapp, finitions, enteteEtChamps, transfert, residence, resumeDetail, tempsQuiPasse, planCalendrier, comparerActes, outilsAvances, etSi, deuxOffres, demarrageRapide, demarrageGmfu, assistantEstimations, assistantPrecisions, importSur, saisieSolide, accessibiliteLot8, prochainPaiement, superviseurAB, supervisionPlan, reerDroits, premiereAnneeApres, hypotheseProjection, loi2, repertoireActes, revenuEtImpot, ciblesTactiles]) {
+    for (const scenario of [exemple, brochure, alertes, sauvegarde, robustesse, injection, rapport, nouvelleVersion, budget, logo, sousOnglets, repartition, verrou, verrouDelai, verrouOnglets, sommaireComptable, monteCarlo, apercuCoherent, assistantVide, assistantMode, rendementProfil, lexiqueRamq, fraisGardeMenage, acomptesCeliapp, finitions, enteteEtChamps, transfert, residence, resumeDetail, tempsQuiPasse, planCalendrier, comparerActes, outilsAvances, etSi, deuxOffres, demarrageRapide, demarrageGmfu, assistantEstimations, assistantPrecisions, texteLargeur, importSur, saisieSolide, accessibiliteLot8, prochainPaiement, superviseurAB, supervisionPlan, reerDroits, premiereAnneeApres, hypotheseProjection, loi2, repertoireActes, revenuEtImpot, ciblesTactiles]) {
       if (process.env.SCENARIOS && !process.env.SCENARIOS.split(",").includes(scenario.name)) continue;
       try { await scenario(b, base); } catch (e) { verifier(`${scenario.name} : déroulement`, false, String(e).split("\n")[0]); }
     }
