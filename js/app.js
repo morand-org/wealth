@@ -1955,8 +1955,7 @@ window.Verrou.quandOuvert(function () {
     const cle = sousChoisi("loi2");
     if (cle === "estimateur") rendreLoi2(R);
     else if (cle === "choix") rendreChoixLoi2(R);
-    else if (cle === "regles") rendreReglesLoi2();
-    else rendreDocumentsLoi2();
+    else { rendreReglesLoi2(); rendreDocumentsLoi2(); }   // Ce qui change, puis les documents
   }
   function rendreLoi2(R) {
     const carte = document.getElementById("cp-loi2"), P = C.COMPOSE.parts, o = C.COMPOSE.officiel, M = C.COMPOSE.majorationNouveau;
@@ -2072,7 +2071,7 @@ window.Verrou.quandOuvert(function () {
       + "Hypothèses de l'app, en attendant les règles : la capitation remplace les forfaits d'inscription, de volume et GMF ; « Partir de mon revenu actuel » répartit la capitation selon l'exemple de table actuarielle de la FMOQ (un patient vulnérable 1,7 à 2,5 fois un non vulnérable selon son groupe, un affilié aux deux tiers), qui n'est pas un barème ; les visites des apprenants sont remplacées par la supervision à 100 % ; le reste ne change pas. "
       + "Sources : FMOQ, « Modèle de rémunération composé en première ligne », résumé-synthèse (octobre 2026) et capsule explicative (2026) ; entente de principe du 10 décembre 2025. Montants avant les frais et l'impôt.";
   }
-  /* Mon choix : votre rémunération actuelle face au mode composé, avec les mêmes données (patients, demi-journées,
+  /* Comparaison : votre rémunération actuelle face au mode composé, avec les mêmes données (patients, demi-journées,
      heures). Un verdict, un duel côte à côte (brut, net, écart) et la composition des deux revenus, sur la même échelle.
      En GMF-U, l'enseignant pourra garder son mode actuel : la part de l'enseignement est montrée à part. */
   function rendreChoixLoi2(R) {
@@ -4365,13 +4364,13 @@ window.Verrou.quandOuvert(function () {
      Le répertoire des actes, les codes de vulnérabilité et les formulaires de la CNESST sont dans Codes Morand (/codes/) :
      une ancienne adresse #codes y mène. Le mode composé est dans Loi 2. */
   const ALIAS = { epargne: "avenir", patrimoine: "avenir" };
-  const ANCIENNES = { "revenu/supervision": "comparer/demijournee", "revenu/actes": "comparer/actes", "comparer/loi2": "loi2/estimateur" };
+  const ANCIENNES = { "revenu/supervision": "comparer/demijournee", "revenu/actes": "comparer/actes", "comparer/loi2": "loi2/estimateur", "loi2/documents": "loi2/regles" };
   const FINANCES = ["budget", "avenir", "impot"], TOUJOURS_DETAIL = ["donnees", "loi2"];
   /* Sous-onglets de Comparer, du Budget et du Patrimoine : des pages plus courtes sur téléphone. Le choix est
      gardé sur cet appareil ; une adresse comme #budget/dettes ouvre directement un sous-onglet. */
   const SOUS_ONGLETS = {
     comparer: [["modes", "Modes"], ["demijournee", "Demi-journée"], ["actes", "Actes"], ["offres", "Offres"]],
-    loi2: [["estimateur", "Estimateur"], ["choix", "Mon choix"], ["regles", "Ce qui change"], ["documents", "Documents"]],
+    loi2: [["estimateur", "Estimateur"], ["choix", "Comparaison"], ["regles", "Ce qui change"]],
     budget: [["mois", "Ce mois-ci"], ["annee", "L'année"], ["dettes", "Dettes"]],
     avenir: [["aujourdhui", "Aujourd'hui"], ["projection", "Projection"], ["placements", "Placements"], ["proches", "Proches"]],
   };
