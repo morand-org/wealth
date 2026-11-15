@@ -655,6 +655,11 @@ window.Verrou.quandOuvert(function () {
     R.libelleNet = md => R.fraisPerso(md) > 0 ? "Net après impôt et frais" : "Net après impôt";
     R.nets = {};
     for (const md of R.modes) R.nets[md] = R.impots[md].net - R.fraisPerso(md);
+    // Brut après frais de cabinet (avant impôt) : le chiffre mis en avant, celui qui classe les modes et donne les
+    // écarts. À l'acte en clinique, la part remise à la clinique n'est pas un revenu ; ailleurs, c'est le brut.
+    R.bruts = {};
+    for (const md of R.modes) R.bruts[md] = R.rev[md].total - (R.rev[md].fraisCabinet || 0);
+    R.libelleBrut = md => (R.rev[md].fraisCabinet || 0) > 0.5 ? "brut après frais de cabinet" : "brut";
     R.impot = R.impots[mode];
     R.conjointe = R.couple ? partenaires[mode] : null;
     // Vue résidence : le salaire de résident remplace la pratique dans l'impôt, le budget et la famille ; les frais
@@ -695,9 +700,9 @@ window.Verrou.quandOuvert(function () {
       if (milieu !== "gmfu") Object.assign(x, { enseignement: 0, residents: 0, externes: 0, patientsPendantSupervision: 0 });
       else x.enseignement = Math.min(+S.revenu.enseignement || 0, x.demiJournees);
       const g = C.revenuGmfu(x), mode = MILIEUX[milieu].modes.includes(o.mode) ? o.mode : MILIEUX[milieu].modes[0];
-      return { milieu, mode, g, brut: g[mode].total, net: R.netPour(g[mode].total, g[mode].fraisCabinet), heure: parHeure(g, mode), heures: g.heures };
+      return { milieu, mode, g, brut: g[mode].total, brutF: g[mode].total - (g[mode].fraisCabinet || 0), net: R.netPour(g[mode].total, g[mode].fraisCabinet), heure: parHeure(g, mode), heures: g.heures };
     };
-    R.essaiModes = x => { const g = revenuDe(x); return Object.fromEntries(R.modes.map(md => [md, { brut: g[md].total, net: R.netPour(g[md].total, g[md].fraisCabinet), heure: parHeure(g, md) }])); };
+    R.essaiModes = x => { const g = revenuDe(x); return Object.fromEntries(R.modes.map(md => [md, { brut: g[md].total, brutF: g[md].total - (g[md].fraisCabinet || 0), net: R.netPour(g[md].total, g[md].fraisCabinet), heure: parHeure(g, md) }])); };
     // REER : impôt sans cotisation, et avec une cotisation donnée (au revenu de l'année).
     const baseMode = { ...base, depensesPro: depensesMode(mode), revenu: R.brut };
     const impotVue = x => R.vueResidence ? impotResidence(x) : impotDe({ ...baseMode, ...x });
@@ -1093,13 +1098,13 @@ window.Verrou.quandOuvert(function () {
     const carte = document.getElementById("ap-r-modes"), montrer = R.plusieursModes && !R.vueResidence;
     carte.hidden = !montrer;
     if (!montrer) { carte.textContent = ""; return; }
-    const meilleur = R.modes.reduce((a, m) => R.nets[m] > R.nets[a] ? m : a, R.modes[0]);
-    const second = R.modes.filter(m => m !== meilleur).reduce((a, m) => !a || R.nets[m] > R.nets[a] ? m : a, null);
-    const lignes = R.modes.map(m => ({ titre: NOM_MODE[m], sous: m === R.mode ? "Votre mode" : "", valeur: $(R.rev[m].total),
-      valeurSous: `net ${$(R.nets[m])}${R.societeActive ? " pour vous" : ""}`, cls: m === meilleur ? "choisi" : null }));
-    const phrase = second ? `${NOMS_MODE_ACTES[meilleur]} rapporte le plus : ${$(R.nets[meilleur] - R.nets[second])} net de plus que ${AU_MODE[second].replace(/^au /, "le ").replace(/^à /, "")} par année.` : "";
+    const meilleur = R.modes.reduce((a, m) => R.bruts[m] > R.bruts[a] ? m : a, R.modes[0]);
+    const second = R.modes.filter(m => m !== meilleur).reduce((a, m) => !a || R.bruts[m] > R.bruts[a] ? m : a, null);
+    const lignes = R.modes.map(m => ({ titre: NOM_MODE[m], sous: [m === R.mode ? "Votre mode" : "", R.rev[m].fraisCabinet > 0.5 ? `après ${$(R.rev[m].fraisCabinet)} de frais de cabinet` : ""].filter(Boolean).join(" · "),
+      valeur: $(R.bruts[m]), valeurSous: `net ${$(R.nets[m])}${R.societeActive ? " pour vous" : ""}`, cls: m === meilleur ? "choisi" : null }));
+    const phrase = second ? `${NOMS_MODE_ACTES[meilleur]} rapporte le plus : ${$(R.bruts[meilleur] - R.bruts[second])} brut de plus que ${AU_MODE[second].replace(/^au /, "le ").replace(/^à /, "")} par année.` : "";
     carteResume("ap-r-modes", R.modes.length === 3 ? "Vos trois modes" : "Vos modes", ["Comparer", "#comparer"],
-      rangeesModes(lignes, R.modes.map(m => R.rev[m].total), R.modes.map(m => R.nets[m])), el("p", "conclusion", phrase), el("p", "aide", LEGENDE_BARRES));
+      rangeesModes(lignes, R.modes.map(m => R.bruts[m]), R.modes.map(m => R.nets[m])), el("p", "conclusion", phrase), el("p", "aide", LEGENDE_BARRES));
   }
   function rendreApercu(R) {
     ongletDemiJournee(R);
@@ -1113,12 +1118,12 @@ window.Verrou.quandOuvert(function () {
     // Le grand chiffre : le revenu brut estimé de l'année ; dessous, le net, le milieu et le mode, et l'écart de net
     // avec le meilleur autre mode. Le budget du mois (surplus) suit, dans les tuiles et « Ce mois-ci ».
     const autres = R.vueResidence ? [] : R.modes.filter(m => m !== R.mode);
-    const meilleurAutre = autres.reduce((a, m) => !a || R.nets[m] > R.nets[a] ? m : a, null);
-    const ecart = meilleurAutre ? R.nets[R.mode] - R.nets[meilleurAutre] : 0;
+    const meilleurAutre = autres.reduce((a, m) => !a || R.bruts[m] > R.bruts[a] ? m : a, null);
+    const ecart = meilleurAutre ? R.bruts[R.mode] - R.bruts[meilleurAutre] : 0;
     hero("ap-hero", "Votre revenu brut de l'année" + enVue, $(R.brutVue), [
       `${R.vueResidence ? "Net après impôt et retenues" : R.libelleNet(R.mode)} : ${$(R.netVue)}`,
       R.vueResidence ? `Salaire de résident, R${R.res.niveau}` : libelleRevenu(),
-      meilleurAutre ? puce(`${signe(ecart)} net par rapport ${AU_MODE[meilleurAutre]}`, ecart >= 0 ? "haut" : "bas", ecart >= 0) : null, quand, sansInscrits(R),
+      meilleurAutre ? puce(`${signe(ecart)} brut par rapport ${AU_MODE[meilleurAutre]}`, ecart >= 0 ? "haut" : "bas", ecart >= 0) : null, quand, sansInscrits(R),
     ], R.brutVue);
     modesApercu(R);
 
@@ -1369,7 +1374,7 @@ window.Verrou.quandOuvert(function () {
       return;
     }
     const g = R.rev, x = g[R.mode];
-    tuilesResume("rv-r-tuiles", [{ titre: "Net de la pratique", valeur: $(R.nets[R.mode] / 12), sous: R.fraisPerso(R.mode) > 0 ? "Par mois, après impôt et frais" : "Par mois, après impôt" },
+    tuilesResume("rv-r-tuiles", [{ titre: "Brut de la pratique", valeur: $(R.bruts[R.mode] / 12), sous: (R.rev[R.mode].fraisCabinet || 0) > 0.5 ? "Par mois, après frais de cabinet" : "Par mois, avant impôt" },
       { titre: "Heures en clinique", valeur: nb(g.heures, 0) + " h", sous: g.heuresAdmin > 0 ? `Par année, plus ${nb(g.heuresAdmin, 0)} h administratives` : "Par année" }, { titre: "Visites", valeur: nb(g.nbVisites, 0), sous: "Par année, en clinique" },
       { titre: "Patients inscrits", valeur: nb(g.inscritsFin, 0), sous: "En fin d'année" }]);
     const l = PARTS_REVENU.map(([n, f]) => [n, f(x)]).filter(([, v]) => v > 0.5).sort((a, b) => b[1] - a[1]);
@@ -1739,7 +1744,7 @@ window.Verrou.quandOuvert(function () {
       ? `Avec ${nb(pat)} patients par demi-journée de clinique, ${noms[meilleurs[0]]} rapporte le plus pour ces visites.`
       : `Avec ${nb(pat)} patients par demi-journée de clinique, ${meilleurs.map(m => noms[m]).join(" et ")} rapportent autant pour ces visites.`;
     // L'année entière compte aussi l'enseignement, le sans rendez-vous, les activités et les forfaits : elle peut conclure autrement.
-    const an = R.modes.reduce((a, m) => R.nets[m] > R.nets[a] ? m : a, R.modes[0]);
+    const an = R.modes.reduce((a, m) => R.bruts[m] > R.bruts[a] ? m : a, R.modes[0]);
     conclusion += meilleurs.includes(an) ? ` Sur l'année aussi, ${noms[an]} rapporte le plus.`
       : ` Sur l'année, ${noms[an]} reste devant : l'année compte aussi l'enseignement, le sans rendez-vous et les forfaits.`;
     const comment = el("details", "plus-loin"); comment.append(el("summary", null, "Comment ces seuils sont calculés"), el("p", "aide", aide));
@@ -1759,7 +1764,7 @@ window.Verrou.quandOuvert(function () {
     });
     return z;
   }
-  const LEGENDE_BARRES = "Barre : le brut ; partie pleine : le net, après impôt et frais. En or : le meilleur net.";
+  const LEGENDE_BARRES = "Barre : le brut (après frais de cabinet, s'il y en a) ; partie pleine : le net, après impôt. En or : le meilleur brut.";
   function resumeModes(R) {
     const carte = document.getElementById("rv-r-modes"), montrer = R.plusieursModes;
     carte.hidden = !montrer;
@@ -1767,13 +1772,13 @@ window.Verrou.quandOuvert(function () {
     // « Et si… » : d'autres patients et d'autres demi-journées, pour cet écran seulement, jusqu'à « Garder ces valeurs ».
     const r = S.revenu, planPat = +r.patientsParDJ || 0, planDJ = +r.demiJournees || 0, minDJ = Math.max(1, R.milieu === "gmfu" ? +r.enseignement || 0 : 0);
     const e = U.essai || { pat: planPat, dj: planDJ }, essai = e.pat !== planPat || e.dj !== planDJ;
-    const v = essai ? R.essaiModes({ patientsParDJ: e.pat, demiJournees: e.dj }) : Object.fromEntries(R.modes.map(m => [m, { brut: R.rev[m].total, net: R.nets[m], heure: R.parHeure[m] }]));
-    const meilleur = R.modes.reduce((a, m) => v[m].net > v[a].net ? m : a, R.modes[0]);
-    const second = R.modes.filter(m => m !== meilleur).reduce((a, m) => !a || v[m].net > v[a].net ? m : a, null);
+    const v = essai ? R.essaiModes({ patientsParDJ: e.pat, demiJournees: e.dj }) : Object.fromEntries(R.modes.map(m => [m, { brut: R.rev[m].total, brutF: R.bruts[m], net: R.nets[m], heure: R.parHeure[m] }]));
+    const meilleur = R.modes.reduce((a, m) => v[m].brutF > v[a].brutF ? m : a, R.modes[0]);
+    const second = R.modes.filter(m => m !== meilleur).reduce((a, m) => !a || v[m].brutF > v[a].brutF ? m : a, null);
     const lignesModes = R.modes.map(m => ({ titre: NOM_MODE[m], sous: [v[m].heure != null ? `${$(v[m].heure)}/h` : "", m === R.mode ? "dans votre budget" : ""].filter(Boolean).join(" · "),
-      valeur: $(v[m].brut), valeurSous: `net ${$(v[m].net)}${essai ? ` (${signe(v[m].net - R.nets[m])})` : R.societeActive ? " pour vous" : ""}`, cls: m === meilleur ? "choisi" : null }));
-    const ecartNet = second ? v[meilleur].net - v[second].net : 0;
-    const phrase = second ? `${NOMS_MODE_ACTES[meilleur]} rapporte le plus : ${$(ecartNet)} net de plus que ${AU_MODE[second].replace(/^au /, "le ").replace(/^à /, "")} par année.` : "";
+      valeur: $(v[m].brutF), valeurSous: `net ${$(v[m].net)}${essai ? ` (${signe(v[m].brutF - R.bruts[m])} brut)` : R.societeActive ? " pour vous" : ""}`, cls: m === meilleur ? "choisi" : null }));
+    const ecartBrut = second ? v[meilleur].brutF - v[second].brutF : 0;
+    const phrase = second ? `${NOMS_MODE_ACTES[meilleur]} rapporte le plus : ${$(ecartBrut)} brut de plus que ${AU_MODE[second].replace(/^au /, "le ").replace(/^à /, "")} par année.` : "";
     // Les boutons + et − : le focus reste sur le bouton touché.
     const pas = (id, etiquette, delta, ok) => { const b = el("button", "pas", delta > 0 ? "+" : "−"); b.type = "button"; b.id = id; b.setAttribute("aria-label", etiquette); b.disabled = !ok;
       b.addEventListener("click", () => { const x = U.essai || { pat: planPat, dj: planDJ };
@@ -1857,7 +1862,7 @@ window.Verrou.quandOuvert(function () {
       carte.dataset.monte = "1";
       const tete = el("div", "carte-tete"); tete.appendChild(el("h2", null, "Comparer deux offres"));
       const vide = el("div"); vide.id = "rv-offre-vide";
-      vide.appendChild(el("p", "aide", "Votre plan à côté d'une autre pratique : un autre milieu, un autre mode, une autre semaine. Le net par année et à l'heure, côte à côte."));
+      vide.appendChild(el("p", "aide", "Votre plan à côté d'une autre pratique : un autre milieu, un autre mode, une autre semaine. Le brut par année et à l'heure, côte à côte."));
       const a = el("div", "actions"), b = el("button", "bouton secondaire", "Comparer avec une autre offre"); b.type = "button"; b.id = "rv-offre-ajouter";
       b.addEventListener("click", () => { S.revenu.offreB = offreDepart(); U.offreOuverte = true; S.meta.exemple = false; sauver(); tout(); });
       a.appendChild(b); vide.appendChild(a);
@@ -1877,19 +1882,19 @@ window.Verrou.quandOuvert(function () {
     document.getElementById("rv-offre-vide").hidden = !!o;
     document.getElementById("rv-offre-plein").hidden = !o;
     if (!o) return;
-    const plan = { milieu: R.milieu, mode: R.mode, brut: R.rev[R.mode].total, net: R.nets[R.mode], heure: R.parHeure[R.mode], heures: R.rev.heures };
+    const plan = { milieu: R.milieu, mode: R.mode, brut: R.rev[R.mode].total, brutF: R.bruts[R.mode], net: R.nets[R.mode], heure: R.parHeure[R.mode], heures: R.rev.heures };
     const b = R.offre(o), nom = x => `${MILIEUX[x.milieu].nom}${MILIEUX[x.milieu].modes.length > 1 ? ", " + NOM_MODE[x.mode].toLowerCase() : ""}`;
     const plus = (a, c) => c > a + 0.5 ? "meilleur" : null;
     lignes(document.getElementById("rv-offre-table"), ["", "Votre plan", "L'autre offre"], [
       { cellules: ["Pratique", nom(plan), nom(b)] },
       { cellules: ["Heures en clinique", `${nb(plan.heures, 0)} h`, `${nb(b.heures, 0)} h`] },
-      { cellules: ["Brut par année", $(plan.brut), $(b.brut)] },
-      { cellules: ["Net par année", $(plan.net), $(b.net)], classes: [null, plus(b.net, plan.net), plus(plan.net, b.net)] },
+      { cellules: [plan.brutF < plan.brut - 0.5 || b.brutF < b.brut - 0.5 ? "Brut par année, après frais de cabinet" : "Brut par année", $(plan.brutF), $(b.brutF)], classes: [null, plus(b.brutF, plan.brutF), plus(plan.brutF, b.brutF)] },
+      { cellules: ["Net par année", $(plan.net), $(b.net)] },
       { cellules: ["Par heure en clinique", plan.heure != null ? $(plan.heure) : "—", b.heure != null ? $(b.heure) : "—"], classes: [null, plus(b.heure || 0, plan.heure || 0), plus(plan.heure || 0, b.heure || 0)] },
     ]);
-    const ecart = b.net - plan.net;
-    document.getElementById("rv-offre-conclusion").textContent = Math.abs(ecart) < 1 ? "Les deux offres laissent le même net par année."
-      : `${ecart > 0 ? "L'autre offre" : "Votre plan"} laisse ${$(Math.abs(ecart))} net de plus par année${b.heure != null && plan.heure != null ? ` ; à l'heure, ${b.heure > plan.heure ? "l'autre offre" : "votre plan"} paie ${$(Math.abs(b.heure - plan.heure))} de plus` : ""}.`;
+    const ecart = b.brutF - plan.brutF;
+    document.getElementById("rv-offre-conclusion").textContent = Math.abs(ecart) < 1 ? "Les deux offres rapportent le même brut par année."
+      : `${ecart > 0 ? "L'autre offre" : "Votre plan"} rapporte ${$(Math.abs(ecart))} brut de plus par année${b.heure != null && plan.heure != null ? ` ; à l'heure, ${b.heure > plan.heure ? "l'autre offre" : "votre plan"} paie ${$(Math.abs(b.heure - plan.heure))} de plus` : ""}.`;
     const d = document.getElementById("rv-offre-plus"); if (U.offreOuverte !== undefined) d.open = !!U.offreOuverte;
     champsRapides("rv-offre-champs", [
       { p: "revenu.offreB.milieu", l: "Milieu", t: "select", o: Object.entries(MILIEUX).map(([k, m]) => [k, m.long]) },
@@ -2105,12 +2110,12 @@ window.Verrou.quandOuvert(function () {
     const z = document.getElementById("cp-hero");
     z.hidden = !R.plusieursModes;
     if (z.hidden) { z.textContent = ""; delete z.dataset.nombre; return; }
-    const meilleur = R.modes.reduce((a, m) => R.nets[m] > R.nets[a] ? m : a, R.modes[0]);
-    const second = R.modes.filter(m => m !== meilleur).reduce((a, m) => !a || R.nets[m] > R.nets[a] ? m : a, null);
-    const brut = R.rev[meilleur].total;
-    hero("cp-hero", `Le plus payant : ${NOM_MODE[meilleur].toLowerCase()}, brut de l'année`, $(brut), [
+    const meilleur = R.modes.reduce((a, m) => R.bruts[m] > R.bruts[a] ? m : a, R.modes[0]);
+    const second = R.modes.filter(m => m !== meilleur).reduce((a, m) => !a || R.bruts[m] > R.bruts[a] ? m : a, null);
+    const brut = R.bruts[meilleur];
+    hero("cp-hero", `Le plus payant : ${NOM_MODE[meilleur].toLowerCase()}, ${R.libelleBrut(meilleur)} de l'année`, $(brut), [
       `${R.libelleNet(meilleur)}${R.societeActive ? ", pour vous" : ""} : ${$(R.nets[meilleur])}`,
-      puce(`${signe(R.nets[meilleur] - R.nets[second])} net par rapport ${AU_MODE[second]}`, "haut", true),
+      puce(`${signe(R.bruts[meilleur] - R.bruts[second])} brut par rapport ${AU_MODE[second]}`, "haut", true),
       R.mode === meilleur ? "C'est le mode de votre budget" : `Votre budget est calculé ${AU_MODE[R.mode]}`,
       R.residenceActive ? puce(`En pratique, dès ${moisLong(R.debutPratique)}`) : null,
     ], brut);
@@ -2135,15 +2140,15 @@ window.Verrou.quandOuvert(function () {
   function rendreComparaisonModes(R) {
     document.getElementById("rv-carte-modes").hidden = !R.plusieursModes;
     if (!R.plusieursModes) return;
-    const g = R.rev, autres = R.modes.filter(m => m !== R.mode), meilleur = R.modes.reduce((a, m) => R.nets[m] > R.nets[a] ? m : a, R.modes[0]);
+    const g = R.rev, autres = R.modes.filter(m => m !== R.mode), meilleur = R.modes.reduce((a, m) => R.bruts[m] > R.bruts[a] ? m : a, R.modes[0]);
     const comp = document.getElementById("rv-comparaison"); comp.textContent = ""; comp.className = "barres";
     const sous = k => { const t = [k === R.mode ? "dans votre budget" : "", g[k].fraisCabinet ? `frais de cabinet ${moins(g[k].fraisCabinet)}` : "",
       R.societeActive ? `laissé dans la société ${$(R.impots[k].societe.retenu)}` : ""].filter(Boolean).join(" · "); return t && t[0].toUpperCase() + t.slice(1); };
-    comp.append(rangeesModes(R.modes.map(k => ({ titre: NOM_MODE[k], sous: sous(k), valeur: $(g[k].total), valeurSous: `net ${$(R.nets[k])}${R.societeActive ? " pour vous" : ""}`,
-      cls: k === meilleur ? "choisi" : null })), R.modes.map(k => g[k].total), R.modes.map(k => R.nets[k])), el("p", "aide", LEGENDE_BARRES));
+    comp.append(rangeesModes(R.modes.map(k => ({ titre: NOM_MODE[k], sous: sous(k), valeur: $(R.bruts[k]), valeurSous: `net ${$(R.nets[k])}${R.societeActive ? " pour vous" : ""}`,
+      cls: k === meilleur ? "choisi" : null })), R.modes.map(k => R.bruts[k]), R.modes.map(k => R.nets[k])), el("p", "aide", LEGENDE_BARRES));
     comp.appendChild(rangees(el("div"), autres.map((m, i) => ({ titre: `${NOM_MODE[m]} par rapport ${AU_MODE[R.mode]}`,
       sous: R.societeActive ? `Laissé dans la société : ${signe(R.impots[m].societe.retenu - R.impots[R.mode].societe.retenu)}` : `Après impôt et frais : ${signe(R.nets[m] - R.nets[R.mode])}`,
-      valeur: signe(g[m].total - g[R.mode].total), cls: i === 0 ? "total" : null }))));
+      valeur: signe(R.bruts[m] - R.bruts[R.mode]), cls: i === 0 ? "total" : null }))));
     const dPat = s => { const n = des(s); return n == null ? null : n === 0 ? "dès le premier patient" : `dès ${nb(n, 0)} patient${n > 1 ? "s" : ""}`; };
     const mD = dPat(g.seuilMixte), aD = dPat(g.seuilActeMixte);
     document.getElementById("rv-seuil").textContent = [
@@ -2165,11 +2170,11 @@ window.Verrou.quandOuvert(function () {
     rendreActivites(R);
     rendreAutresRevenus();
     const g = R.rev, autres = R.modes.filter(m => m !== R.mode);
-    const meilleur = autres.reduce((a, m) => R.nets[m] > R.nets[a] ? m : a, autres[0]);
-    const diff = meilleur ? R.nets[R.mode] - R.nets[meilleur] : 0;
+    const meilleur = autres.reduce((a, m) => R.bruts[m] > R.bruts[a] ? m : a, autres[0]);
+    const diff = meilleur ? R.bruts[R.mode] - R.bruts[meilleur] : 0;
     hero("rv-hero", "Revenu brut de l'année", $(g[R.mode].total), [
       `${R.libelleNet(R.mode)} : ${$(R.nets[R.mode])}`,
-      meilleur ? puce(`${signe(diff)} net par rapport ${AU_MODE[meilleur]}`, diff >= 0 ? "haut" : "bas", diff >= 0)
+      meilleur ? puce(`${signe(diff)} brut par rapport ${AU_MODE[meilleur]}`, diff >= 0 ? "haut" : "bas", diff >= 0)
         : g.activites ? puce(`Dont ${$(g.activites)} d'activités en établissement`) : null,
       R.residenceActive ? puce(`Dès ${moisLong(R.debutPratique)}`) : null, sansInscrits(R),
     ], g[R.mode].total);

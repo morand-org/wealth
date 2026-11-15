@@ -1163,10 +1163,23 @@ async function comparerActes(b, base) {
       dansRevenu: !!document.querySelector("#v-revenu :is(#rv-r-modes, #rv-r-supervision, #rv-carte-modes, #rv-carte-sens, #rv-carte-supervision, #rv-carte-repertoire, #rv-carte-offres)"),
       debord: document.documentElement.scrollWidth > document.documentElement.clientWidth };
   });
-  verifier("résumé de Comparer : en tête, le mode le plus payant (le brut en gros, le net dessous) ; « Vos trois modes » dessous, le meilleur net en évidence ; elle mène à l'onglet Modes",
-    resume.heroVu && /^Le plus payant : (taux horaire|taux mixte|à l'acte), brut de l'année$/.test(resume.etiquette) && resume.hero.includes("net par rapport")
+  verifier("résumé de Comparer : en tête, le mode le plus payant au brut (après frais de cabinet), le net dessous ; « Vos trois modes » dessous, le meilleur brut en évidence ; elle mène à l'onglet Modes",
+    resume.heroVu && /^Le plus payant : (taux horaire|taux mixte|à l'acte), brut( après frais de cabinet)? de l'année$/.test(resume.etiquette) && resume.hero.includes("brut par rapport")
+    && !resume.hero.includes("net par rapport") && resume.texte.includes("brut de plus que")
     && resume.vu && resume.lien === "#comparer/modes" && resume.texte.includes("Vos trois modes") && /net\s\d/.test(resume.texte) && resume.texte.includes("rapporte le plus")
     && resume.lignes === 3 && resume.choisis === 1 && resume.sousLeChiffre && resume.avantLesLiens && !resume.debord, resume);
+  // Le classement suit le brut après frais de cabinet (pas le net) : la frais remise à la clinique est retirée, l'impôt non.
+  await remplacer(p, { "revenu.milieu": "gmfu", "revenu.lieuTarifs": "cabinet", "revenu.fraisCabinetPct": 45, "revenu.modeBudget": "mixte" });
+  await allerA(p, "comparer"); await p.waitForTimeout(200);
+  const classement = await p.evaluate(() => { const R = window.Wealthnord.resultats(), modes = R.modes;
+    const parBrut = modes.reduce((a, m) => R.bruts[m] > R.bruts[a] ? m : a, modes[0]);
+    const choisi = [...document.querySelectorAll("#rv-r-modes .rangee")].findIndex(r => r.classList.contains("choisi"));
+    const montant = t => +t.replace(/[^\d]/g, "");
+    return { parBrut, choisi: modes[choisi], fraisRetires: modes.every(m => Math.abs(R.bruts[m] - (R.rev[m].total - (R.rev[m].fraisCabinet || 0))) < 0.01),
+      heroOk: montant(document.querySelector("#cp-hero .hero-valeur").textContent) === Math.round(R.bruts[parBrut]), fraisActe: R.rev.acte.fraisCabinet };
+  });
+  verifier("comparer : le mode le plus payant est celui du plus grand brut après frais de cabinet ; le grand chiffre est ce brut",
+    classement.choisi === classement.parBrut && classement.fraisRetires && classement.heroOk && classement.fraisActe > 0, classement);
   verifier("résumé de Comparer : un lien vers chaque onglet ; plus rien à comparer dans la page Revenu",
     resume.liens.join() === "#comparer/modes,#comparer/demijournee,#comparer/actes,#comparer/offres" && !resume.dansRevenu, resume.liens);
   const sup = await p.evaluate(() => { const c = document.getElementById("rv-r-supervision"), m = document.getElementById("rv-r-modes");
@@ -1263,7 +1276,7 @@ async function deuxOffres(b, base) {
   const vue = await p.evaluate(() => ({ lignes: document.querySelectorAll("#rv-offre-table tbody tr").length, conclusion: document.getElementById("rv-offre-conclusion").textContent,
     offre: window.Wealthnord.etat().revenu.offreB, ouvert: document.getElementById("rv-offre-plus").open, debord: document.documentElement.scrollWidth > document.documentElement.clientWidth }));
   verifier("offres : l'autre offre (GMF-U, au mixte) à côté du plan, avec sa conclusion", vue.lignes === 5 && vue.offre && vue.offre.milieu === "gmfu" && vue.offre.mode === "mixte"
-    && /net de plus par année/.test(vue.conclusion) && vue.ouvert && !vue.debord, vue);
+    && /brut de plus par année/.test(vue.conclusion) && vue.ouvert && !vue.debord, vue);
   await p.selectOption("#rapide-revenu-offreB-milieu", "clsc"); await p.waitForTimeout(250);
   await p.fill("#rapide-revenu-offreB-patientsParDJ", "9"); await p.waitForTimeout(300);
   const regle = await p.evaluate(() => ({ o: window.Wealthnord.etat().revenu.offreB, focus: document.activeElement && document.activeElement.id, nom: document.querySelector("#rv-offre-table tbody tr td:nth-child(3)").textContent }));
