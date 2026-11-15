@@ -1780,6 +1780,14 @@ async function loi2(b, base) {
   await p.click('#loi2-annee button[data-v="1"]'); await p.waitForTimeout(300);
   const an1 = await p.evaluate(() => ({ an: window.Wealthnord.etat().loi2.anneePEC, texte: document.getElementById("loi2-resultat").textContent, aide: document.getElementById("loi2-annee-aide").textContent }));
   verifier("Loi 2 : en 1re année de prise en charge, la majoration de 100 % sur 500 patients s'affiche", an1.an === 1 && an1.texte.includes("Majoration, début de pratique") && an1.aide.includes("500"), an1);
+  // Résidence, début de pratique en septembre 2027 : 7 mois avant l'entrée en vigueur estimée (1er avril 2028), donc 1re année.
+  await remplacer(p, { "residence.active": true, "residence.debutPratique": "2027-09", "loi2.anneePEC": null });
+  await allerA(p, "loi2/estimateur");
+  const pecSept = await p.evaluate(() => ({ an: document.querySelector('#loi2-annee [aria-checked="true"]')?.dataset.v, aide: document.getElementById("loi2-annee-aide").textContent }));
+  verifier("Loi 2 : début de pratique en septembre 2027, entrée en vigueur estimée le 1er avril 2028 : 1re année de prise en charge (500 patients)",
+    pecSept.an === "1" && pecSept.aide.includes("500") && pecSept.aide.includes("1er avril 2028"), pecSept);
+  await remplacer(p, { "residence.active": false, "loi2.anneePEC": 1 });
+  await allerA(p, "loi2/estimateur");
   await p.fill("#rapide-loi2-tauxHoraire", "0"); await p.waitForTimeout(400);
   const zero = await p.evaluate(() => { const S = window.Wealthnord.etat(), R = window.Wealthnord.resultats();
     return { h: S.loi2.tauxHoraire, horaire: window.Calc.revenuCompose(R.rev, S.loi2, { semaines: S.revenu.semaines }).horaire, texte: document.getElementById("loi2-resultat").textContent }; });
@@ -1816,7 +1824,7 @@ async function loi2(b, base) {
   await allerA(p, "loi2/regles");
   const regles = await p.evaluate(() => ({ t: document.getElementById("l2-regles").textContent, vu: !!document.getElementById("l2-regles").offsetParent, est: !!document.getElementById("cp-loi2").offsetParent }));
   verifier("Loi 2 : « Ce qui change » : orphelins et enseignement à 100 %, majoration 500 puis 750, 14 h, plafonds, 13 semaines",
-    regles.vu && !regles.est && ["orphelins", "EP 42", "750", "14 h", "plafonds trimestriels", "13 semaines", "affiliés"].every(m => regles.t.includes(m)), regles.t.slice(0, 200));
+    regles.vu && !regles.est && ["orphelins", "EP 42", "750", "14 h", "plafonds trimestriels", "13 semaines", "affiliés", "1er avril 2028"].every(m => regles.t.includes(m)), regles.t.slice(0, 200));
   // Les documents sont au bas de « Ce qui change » ; l'ancienne adresse #loi2/documents y mène.
   await allerA(p, "loi2/documents");
   const docs = await p.evaluate(() => [...document.querySelectorAll("#l2-documents a")].map(a => ({ h: a.href, t: a.target, r: a.rel })));

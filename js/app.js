@@ -1929,8 +1929,11 @@ window.Verrou.quandOuvert(function () {
      mode actuel, réparti 50-30-20. Dès que Calc.COMPOSE.officiel est rempli, ses montants priment.
      Page à trois sous-onglets : Estimateur · Ce qui change · Documents. */
   const LOI2_VIDE = { capitation: null, suppVulnerable: null, affilies: null, capitationAffilie: null, tarifVisite: null, tauxHoraire: null, heuresIndirectes: null, partOrphelins: null, anneePEC: null };
-  // Entrée en vigueur estimée : environ 18 mois à compter de juin 2026 (résumé-synthèse), date à confirmer par la RAMQ.
-  const LOI2_ENTREE = "2027-12";
+  /* Entrée en vigueur : notre estimé, le 1er avril 2028. La FMOQ annonce « environ 18 mois à compter de juin 2026 »
+     (résumé-synthèse, octobre 2026), soit décembre 2027 au plus tôt ; en novembre 2026, les montants ne sont pas fixés et
+     la RAMQ doit encore adapter ses systèmes ; le 1er avril 2028 ouvre un exercice, après la fin de l'accord-cadre
+     (31 mars 2028). Date à confirmer par la RAMQ. */
+  const LOI2_ENTREE = "2028-04";
   // Les cinq montants de l'entente ; non inscrits, ils prennent notre estimé (scénario central), toujours marqué.
   const LOI2_MONTANTS = ["capitation", "suppVulnerable", "capitationAffilie", "tarifVisite", "tauxHoraire"];
   const vide = v => v === null || v === undefined || v === "";
@@ -2027,7 +2030,7 @@ window.Verrou.quandOuvert(function () {
     document.getElementById("loi2-annee-aide").textContent = (pec.an === 1 ? `Capitation majorée de ${nb(M.pct, 0)} % sur vos ${nb(M.an1, 0)} premiers patients associés pendant 12 mois.`
       : pec.an === 2 ? `Capitation majorée de ${nb(M.pct, 0)} % sur vos ${nb(M.an2, 0)} premiers patients associés pendant 12 mois.`
         : "Après vos deux premières années de prise en charge : sans majoration.")
-      + (pec.choisi ? "" : ` Estimé selon votre début de pratique et une entrée en vigueur vers ${moisLong(LOI2_ENTREE)}.`);
+      + (pec.choisi ? "" : ` Estimé selon votre début de pratique et une entrée en vigueur le 1er ${moisLong(LOI2_ENTREE)} (notre estimé ; la FMOQ parle de la fin de 2027).`);
     document.getElementById("loi2-titre-hyp").hidden = !!o;
     document.getElementById("loi2-champs").hidden = !!o;
     document.getElementById("loi2-calibrer").closest(".actions").hidden = !!o;
@@ -2183,7 +2186,7 @@ window.Verrou.quandOuvert(function () {
         { titre: "Garantie de revenu", sous: "Pendant les 12 premiers mois : la différence si le mode composé paie moins que l'ancien, à prestation égale." },
         { titre: "Plafonds et régions", sous: "Les trois composantes échappent aux plafonds trimestriels ; la majoration selon le territoire (annexes XII et XII-A) s'y applique." },
         { titre: "Absence", sous: "Congé de maternité, d'adoption ou d'invalidité de plus de 13 semaines : la capitation s'arrête. Elle va au médecin remplaçant désigné, sinon au groupe." },
-        { titre: "Entrée en vigueur", sous: "Partout au Québec en même temps, vers la fin de 2027 (environ 18 mois à compter de juin 2026) ; date à fixer avec la RAMQ." },
+        { titre: "Entrée en vigueur", sous: "Partout au Québec en même temps. Selon la FMOQ, environ 18 mois à compter de juin 2026, soit vers la fin de 2027 ; date à fixer avec la RAMQ. Notre estimé : le 1er avril 2028, les montants n'étant pas encore fixés." },
         { titre: "Hausses", sous: "Les sommes négociées et des hausses paramétriques s'appliquent en même temps, dans tous les secteurs." },
       ]),
       groupe("Qui n'est pas visé", [
