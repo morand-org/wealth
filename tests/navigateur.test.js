@@ -105,7 +105,7 @@ async function brochure(b, base) {
   await p.selectOption("#rv-milieu", "gmfu"); await p.waitForTimeout(300);
   r = (await resultat(p)).r;
   verifier("GMF-U : colonne établissement", r.forfaitInscription === 8.95 && r.forfaitVulnerable === 47 && r.perDiemResident === 41.45 && r.perDiemExterne === 49.85, r);
-  await p.click('[data-feuille="revenu"]'); await p.waitForTimeout(400);
+  await p.click('.vue:not([hidden]) [data-feuille="revenu"]'); await p.waitForTimeout(400);
   await p.selectOption("#c-revenu-listeEnseignement", "2"); await p.waitForTimeout(200);
   r = (await resultat(p)).r;
   verifier("liste 2 : 65,20 $ et 73,55 $", r.perDiemResident === 65.2 && r.perDiemExterne === 73.55, r);
@@ -132,7 +132,7 @@ async function alertes(b, base) {
   verifier("alerte : 7 500 $ à 750 inscrits", l.some(t => t.includes("7 500 $")), l);
   verifier("alerte : forfait GMF", l.some(t => t.includes("Un GMF-U est un GMF")), l);
   await allerA(p, "revenu");
-  await p.click('[data-feuille="revenu"]'); await p.waitForTimeout(400);
+  await p.click('.vue:not([hidden]) [data-feuille="revenu"]'); await p.waitForTimeout(400);
   await p.check("#c-revenu-membreGmf"); await p.waitForTimeout(300);
   await p.click("#feuille-fermer"); await p.waitForTimeout(400);
   await allerA(p, "apercu");
@@ -1948,8 +1948,8 @@ async function revenuEtImpot(b, base) {
   verifier("revenu : plus d'onglet Impôt en haut ; Revenu marqué", rv.section.length === 0 && rv.marque === "revenu", rv);
   const roues = await p.evaluate(() => [...document.querySelectorAll(".tete-page .bouton-modifier[data-feuille]")].map(b => ({ roue: b.classList.contains("bouton-reglages"),
     nom: b.getAttribute("aria-label") || "", texte: b.textContent.trim(), taille: Math.round(b.getBoundingClientRect().width) || null })));
-  verifier("en-têtes : une roue dentée « Personnaliser vos données », la même dans les 6 pages, sans texte visible",
-    roues.length === 6 && roues.every(r => r.roue && r.nom.startsWith("Personnaliser vos données") && r.texte === "Personnaliser"), roues);
+  verifier("en-têtes : une roue dentée « Personnaliser vos données », la même dans les 8 pages (Aperçu et Données compris), sans texte visible",
+    roues.length === 8 && roues.every(r => r.roue && r.nom.startsWith("Personnaliser vos données") && r.texte === "Personnaliser"), roues);
   await allerA(p, "budget");
   const bu = await etat();
   verifier("finances : « Budget · Patrimoine · Impôt » en haut du budget ; Finances marqué", bu.section.join() === "Budget*,Patrimoine,Impôt" && bu.marque === "budget", bu);
@@ -1974,6 +1974,17 @@ async function revenuEtImpot(b, base) {
     if (await p.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)) debords.push(pg);
   }
   verifier("320 px : Revenu, Impôt et Comparer sans débordement", debords.length === 0, debords);
+  // La roue dentée « Personnaliser vos données » : visible dans chaque page de Wealth, et elle ouvre une feuille.
+  const sansRoue = [];
+  for (const pg of ["apercu", "revenu", "comparer", "loi2/estimateur", "loi2/choix", "loi2/regles", "impot", "budget", "avenir", "donnees"]) {
+    await allerA(p, pg);
+    if (!(await p.evaluate(() => { const v = [...document.querySelectorAll(".vue")].find(x => !x.hidden), b = v && v.querySelector(".tete-page .bouton-reglages");
+      return !!(b && b.offsetParent && b.getBoundingClientRect().width >= 40); }))) sansRoue.push(pg);
+  }
+  await allerA(p, "apercu"); await p.click("#v-apercu .bouton-reglages"); await p.waitForTimeout(300);
+  const feuille = await p.evaluate(() => !!document.querySelector(".feuille[open]"));
+  verifier("roue dentée « Personnaliser vos données » dans chaque page (Aperçu et Données compris) ; elle ouvre une feuille", sansRoue.length === 0 && feuille, { sansRoue, feuille });
+  await p.keyboard.press("Escape"); await p.waitForTimeout(200);
   verifier("revenu et impôt : aucune erreur", erreurs.length === 0, erreurs);
   await ctx.close();
 }
